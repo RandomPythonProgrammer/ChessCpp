@@ -9,7 +9,7 @@ using namespace sf;
 
 typedef uint64_t* Board;
 
-enum piece_t {pawn, bishop, knight, rooks, queens, kings};
+enum piece_t {pawns, bishops, knights, rooks, queens, kings};
 
 enum color_t {white=0, black=6};
 
@@ -56,18 +56,49 @@ void get_moves(const Board& board, uint64_t& mask) {
 }
 
 void rank_attack(const Board& board, uint64_t& position, uint64_t& mask) {
-	char pos = log(position) / log(2);
-	uint64_t attack = 0b11111111ULL << pos / 8;
-	uint64_t m = 0;
-	get_white(board, m);
-	if (position & m) {
-		get_black(board, m);
-	}
-	attack ^= m;
+	uint8_t pos = log(position) / log(2);
+	uint8_t line = 0b11111111;
+
+	uint64_t w = 0;
+	uint64_t b = 0;
+
+	uint8_t y = pos >> 3 << 3;
+	uint8_t x = pos % 8;
+	uint8_t pos_line = position >> y;
+
+	get_white(board, w);
+	get_black(board, b);
+	uint64_t a = w | b;
+	uint8_t o = (position & w ? b : w) >> y;
+
+	uint8_t rank = line ^ a >> y;
+	uint8_t right = rank & (uint8_t) (line >> 8-x);
+	uint8_t left = rank & (uint8_t) (line << x+1);
+	uint8_t rfirst = countl_one((uint8_t) (right << 8-x));
+	uint8_t lfirst = countr_one((uint8_t) (left >> x+1));
+
+	left &= line >> (6 - x - lfirst);
+	left |= (pos_line << lfirst + 1) & o;
+	right &= line << (x - rfirst);
+	right |= (pos_line >> rfirst + 1) & o;
+	mask = left | right;
+}
+
+int main() {
+	Board board = create_board();
+	board[bishops] = 0;
+	board[knights] = 0;
+	board[knights + black] = 0b10001000;
+	board[queens] = 0;
+	board[kings] = 0;
+	board[rooks] = 0b00100000;
+	uint64_t pos = 1ULL << 5;
+	uint64_t attacks = 0;
+	rank_attack(board, pos, attacks);
 }
 
 
-int main() {
+int main1() {
 	color_t color = white;
 	int piece_size = 45;
 	int board_size = piece_size * 8;
@@ -147,5 +178,6 @@ int main() {
 
 		window.display();
 	}
+	return 0;
 }
 
