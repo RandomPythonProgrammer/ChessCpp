@@ -15,6 +15,10 @@ enum color_t {white=0, black=6};
 
 Board create_board() {
 	uint64_t pawns = 0b11111111 << 8;
+
+	//testing
+	pawns = 0;
+
 	uint64_t bishops = 0b00100100;
 	uint64_t knights = 0b01000010;
 	uint64_t rooks = 0b10000001;
@@ -51,11 +55,139 @@ void get_all(const Board &board, uint64_t &mask) {
 	get_black(board, mask);
 }
 
-void get_moves(const Board& board, uint64_t& mask) {
-	
+void rotate_right(uint64_t& mask) {
+	uint8_t copy = mask;
+	uint8_t* ranks = new uint8_t[8];
+	for (int i = 0; i < 8; i++) {
+		ranks[i] = mask >> 8 * i;
+	}
+	mask = 0;
+	for (int i = 0; i < 8; i++) {
+		for (int j = 0; j < 8; j++) {
+			bool val = ranks[j] & (1 << i);
+			mask |= ((uint64_t) val) << (7-j) + i*8;
+		}
+	}
 }
 
-void rank_attack(const Board& board, uint64_t& position, uint64_t& mask) {
+void rotate_left(uint64_t& mask) {
+	uint8_t copy = mask;
+	uint8_t* ranks = new uint8_t[8];
+	for (int i = 0; i < 8; i++) {
+		ranks[i] = mask >> 8 * i;
+	}
+	mask = 0;
+	for (int i = 0; i < 8; i++) {
+		for (int j = 0; j < 8; j++) {
+			bool val = ranks[j] & (1 << 7 - i);
+			mask |= ((uint64_t)val) << j + i * 8;
+		}
+	}
+}
+
+void t_r(uint64_t& pos) {
+	pos <<= 7;
+}
+
+void t_l(uint64_t& pos) {
+	pos << 9;
+}
+
+void b_r(uint64_t& pos) {
+	pos >>= 9;
+}
+
+void b_l(uint64_t& pos) {
+	pos >>= 7;
+}
+
+void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
+	//needs a lot of fixing
+	
+	mask = 0;
+	uint64_t pos = position;
+	bool hit = false;
+	uint64_t w = 0;
+	uint64_t b = 0;
+
+	get_white(board, w);
+	get_black(board, b);
+	uint64_t a = w | b;
+	uint8_t o = position & w ? b : w;
+
+	for (int i = 0; i < 7; i++) {
+		t_r(pos);
+		if (o & pos) {
+			if (hit) {
+				break;
+			} else {
+				hit = true;
+			}
+		} else if (a & pos) {
+			break;
+		}
+		mask |= pos;
+	}
+
+	pos = position;
+	hit = false;
+
+	for (int i = 0; i < 7; i++) {
+		t_l (pos);
+		if (o & pos) {
+			if (hit) {
+				break;
+			}
+			else {
+				hit = true;
+			}
+		}
+		else if (a & pos) {
+			break;
+		}
+		mask |= pos;
+	}
+
+	pos = position;
+	hit = false;
+
+	for (int i = 0; i < 7; i++) {
+		b_r(pos);
+		if (o & pos) {
+			if (hit) {
+				break;
+			}
+			else {
+				hit = true;
+			}
+		}
+		else if (a & pos) {
+			break;
+		}
+		mask |= pos;
+	}
+
+	pos = position;
+	hit = false;
+
+	for (int i = 0; i < 7; i++) {
+		b_l(pos);
+		if (o & pos) {
+			if (hit) {
+				break;
+			}
+			else {
+				hit = true;
+			}
+		}
+		else if (a & pos) {
+			break;
+		}
+		mask |= pos;
+	}
+}
+
+void rank_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 	uint8_t pos = log(position) / log(2);
 	uint8_t line = 0b11111111;
 
@@ -81,24 +213,105 @@ void rank_attack(const Board& board, uint64_t& position, uint64_t& mask) {
 	left |= (pos_line << lfirst + 1) & o;
 	right &= line << (x - rfirst);
 	right |= (pos_line >> rfirst + 1) & o;
-	mask = left | right;
+	mask = (left | right);
+	mask <<= y;
+}
+
+void file_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
+	uint64_t rpos = position;
+	rotate_right(rpos);
+	uint8_t pos = log(rpos) / log(2);
+	uint8_t line = 0b11111111;
+
+	uint64_t w = 0;
+	uint64_t b = 0;
+
+	uint8_t y = pos >> 3 << 3;
+	uint8_t x = pos % 8;
+	uint8_t pos_line = rpos >> y;
+
+	get_white(board, w);
+	get_black(board, b);
+	rotate_right(w);
+	rotate_right(b);
+	uint64_t a = w | b;
+	uint8_t o = (rpos & w ? b : w) >> y;
+
+	uint8_t rank = line ^ a >> y;
+	uint8_t right = rank & (uint8_t)(line >> 8 - x);
+	uint8_t left = rank & (uint8_t)(line << x + 1);
+	uint8_t rfirst = countl_one((uint8_t)(right << 8 - x));
+	uint8_t lfirst = countr_one((uint8_t)(left >> x + 1));
+
+	left &= line >> (6 - x - lfirst);
+	left |= (pos_line << lfirst + 1) & o;
+	right &= line << (x - rfirst);
+	right |= (pos_line >> rfirst + 1) & o;
+	mask = (left | right);
+	mask <<= y;
+	rotate_left(mask);
+}
+
+void rook_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
+	uint64_t r = 0;
+	uint64_t f = 0;
+	rank_attack(board, position, r);
+	file_attack(board, position, f);
+	mask = r | f;
+}
+
+void get_moves(const Board& board, const uint64_t& position, uint64_t& mask) {
+	for (int i = 0; i < 6; i++) {
+		uint64_t wboard = board[i];
+		uint64_t bboard = board[i + black];
+		uint64_t r = 0;
+		uint64_t b = 0;
+		if (wboard & position || bboard & position) {
+			switch (i) {
+			case pawns:
+				cout << "pawn move" << endl;
+				break;
+			case bishops:
+				cout << "bishop move" << endl;
+				bishop_attack(board, position, mask);
+				return;
+			case knights:
+				cout << "knight move" << endl;
+				break;
+			case rooks:
+				cout << "rook move" << endl;
+				rook_attack(board, position, mask);
+				return;
+			case queens:
+				cout << "queen move" << endl;
+				rook_attack(board, position, r);
+				bishop_attack(board, position, b);
+				mask = r | b;
+				return;
+			case kings:
+				cout << "king move" << endl;
+				break;
+			default:
+				cout << "invalid piece" << endl;
+				break;
+			}
+		}
+	}
+}
+
+void move(const Board& board, const uint64_t& start, const uint64_t& dest) {
+	for (int i = 0; i < 12; i++) {
+		uint64_t& sub = board[i];
+		if (sub & start) {
+			sub ^= start;
+			sub |= dest;
+		} else {
+			sub &= ~dest;
+		}
+	}
 }
 
 int main() {
-	Board board = create_board();
-	board[bishops] = 0;
-	board[knights] = 0;
-	board[knights + black] = 0b10001000;
-	board[queens] = 0;
-	board[kings] = 0;
-	board[rooks] = 0b00100000;
-	uint64_t pos = 1ULL << 5;
-	uint64_t attacks = 0;
-	rank_attack(board, pos, attacks);
-}
-
-
-int main1() {
 	color_t color = white;
 	int piece_size = 45;
 	int board_size = piece_size * 8;
@@ -129,17 +342,27 @@ int main1() {
 			}
 
 			if (event.type == Event::MouseButtonPressed) {
-				if (!has_selection) {
-					Vector2i position = Mouse::getPosition(window);
-					int x = position.x / piece_size;
-					int y = (board_size - position.y) / piece_size;
-					selected = x + y * 8;
-					uint64_t selection = 1ULL << selected;
-					uint64_t mask = 0ULL;
-					color == white ? get_white(board, mask) : get_black(board, mask);
+				Vector2i position = Mouse::getPosition(window);
+				int x = (board_size - position.x) / piece_size;
+				int y = (board_size - position.y) / piece_size;
+				int pos = x + y * 8;
+				uint64_t click_pos = 1ULL << pos;
+				uint64_t selection = 1ULL << selected;
+				uint64_t mask = 0ULL;
+				color == white ? get_white(board, mask) : get_black(board, mask);
+
+				if (has_selection) {
+					uint64_t moves = 0;
+					get_moves(board, selection, moves);
+					if (moves & click_pos) {
+						move(board, selection, click_pos); //selection
+						break;
+					}
+				}
+				
+				if (mask & click_pos) {
+					selected = pos;
 					has_selection = mask & selection;
-				} else {
-					
 				}
 			}
 		}
@@ -163,7 +386,7 @@ int main1() {
 				int row = j / 8;
 				int column = j % 8;
 				if (sub & 1ULL << j) {
-					sprite.setPosition(column * piece_size, board_size - (row+1) * piece_size);
+					sprite.setPosition((7-column) * piece_size, board_size - (row+1) * piece_size);
 					window.draw(sprite);
 				}
 			}
@@ -172,7 +395,7 @@ int main1() {
 		if (has_selection) {
 			int row = selected / 8;
 			int column = selected % 8;
-			selection_circle.setPosition(column * 45, board_size - (row+1) * 45);
+			selection_circle.setPosition((7-column) * 45, board_size - (row+1) * 45);
 			window.draw(selection_circle);
 		}
 
