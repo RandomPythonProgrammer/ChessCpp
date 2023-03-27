@@ -90,7 +90,7 @@ void t_r(uint64_t& pos) {
 }
 
 void t_l(uint64_t& pos) {
-	pos << 9;
+	pos <<= 9;
 }
 
 void b_r(uint64_t& pos) {
@@ -102,7 +102,18 @@ void b_l(uint64_t& pos) {
 }
 
 void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
-	//needs a lot of fixing
+	//Need to fix the bug of the bishop exiting the board (Resolved)
+
+	/*
+	Strategy:
+		Store the position in an x and y integer
+		Check the integers for bounds
+
+		(Should be Resolved Now)
+
+	Todo: 
+		Inline the functions as they serve no real purpose
+	*/
 	
 	mask = 0;
 	uint64_t pos = position;
@@ -115,7 +126,19 @@ void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask)
 	uint64_t a = w | b;
 	uint8_t o = position & w ? b : w;
 
+	uint8_t ipos = log2(position);
+	uint8_t y = ipos >> 3;
+	uint8_t x = ipos % 8;
+
+	uint8_t y_ = y;
+	uint8_t x_ = x;
+
 	for (int i = 0; i < 7; i++) {
+		y_++;
+		x_--;
+		if (y > 7 || x < 0) {
+			break;
+		}
 		t_r(pos);
 		if (o & pos) {
 			if (hit) {
@@ -131,8 +154,15 @@ void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask)
 
 	pos = position;
 	hit = false;
+	y_ = y;
+	x_ = x;
 
 	for (int i = 0; i < 7; i++) {
+		y_++;
+		x_++;
+		if (y > 7 || x > 7) {
+			break;
+		}
 		t_l (pos);
 		if (o & pos) {
 			if (hit) {
@@ -150,8 +180,15 @@ void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask)
 
 	pos = position;
 	hit = false;
+	y_ = y;
+	x_ = x;
 
 	for (int i = 0; i < 7; i++) {
+		y_--;
+		x_--;
+		if (y < 0 || x < 0) {
+			break;
+		}
 		b_r(pos);
 		if (o & pos) {
 			if (hit) {
@@ -169,8 +206,15 @@ void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask)
 
 	pos = position;
 	hit = false;
+	y_ = y;
+	x_ = x;
 
 	for (int i = 0; i < 7; i++) {
+		y_--;
+		x_++;
+		if (y < 0 || x > 7) {
+			break;
+		}
 		b_l(pos);
 		if (o & pos) {
 			if (hit) {
@@ -185,10 +229,12 @@ void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask)
 		}
 		mask |= pos;
 	}
+
+	//There must be an easier way to do this
 }
 
 void rank_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
-	uint8_t pos = log(position) / log(2);
+	uint8_t pos = log2(position);
 	uint8_t line = 0b11111111;
 
 	uint64_t w = 0;
@@ -209,7 +255,7 @@ void rank_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 	uint8_t rfirst = countl_one((uint8_t) (right << 8-x));
 	uint8_t lfirst = countr_one((uint8_t) (left >> x+1));
 
-	left &= line >> (6 - x - lfirst);
+	left &= line >> (6 - x - lfirst); //There is a bug on this line
 	left |= (pos_line << lfirst + 1) & o;
 	right &= line << (x - rfirst);
 	right |= (pos_line >> rfirst + 1) & o;
@@ -356,6 +402,7 @@ int main() {
 					get_moves(board, selection, moves);
 					if (moves & click_pos) {
 						move(board, selection, click_pos); //selection
+						selected = pos;
 						break;
 					}
 				}
