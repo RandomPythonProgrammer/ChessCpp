@@ -255,7 +255,7 @@ void rank_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 	uint8_t rfirst = countl_one((uint8_t) (right << 8-x));
 	uint8_t lfirst = countr_one((uint8_t) (left >> x+1));
 
-	left &= line >> (6 - x - lfirst); //There is a bug on this line
+	left &= line >> (7 - x - lfirst); //There is a bug on this line
 	left |= (pos_line << lfirst + 1) & o;
 	right &= line << (x - rfirst);
 	right |= (pos_line >> rfirst + 1) & o;
@@ -289,7 +289,7 @@ void file_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 	uint8_t rfirst = countl_one((uint8_t)(right << 8 - x));
 	uint8_t lfirst = countr_one((uint8_t)(left >> x + 1));
 
-	left &= line >> (6 - x - lfirst);
+	left &= line >> (7 - x - lfirst);
 	left |= (pos_line << lfirst + 1) & o;
 	right &= line << (x - rfirst);
 	right |= (pos_line >> rfirst + 1) & o;
