@@ -488,7 +488,7 @@ void pawn_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 		c = b;
 	}
 
-	mask |= (attack &= ~c);
+	mask |= (attack &= ~(w|b));
 }
 
 void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
