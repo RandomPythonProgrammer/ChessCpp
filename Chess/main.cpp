@@ -147,6 +147,142 @@ uint64_t king_table[] = {
 	4665729213955833856
 };
 
+//White pawn moving forwards
+uint64_t wpf_table[] = {
+	256,
+	512,
+	1024,
+	2048,
+	4096,
+	8192,
+	16384,
+	32768,
+	16842752,
+	33685504,
+	67371008,
+	134742016,
+	269484032,
+	538968064,
+	1077936128,
+	2155872256,
+	16777216,
+	33554432,
+	67108864,
+	134217728,
+	268435456,
+	536870912,
+	1073741824,
+	2147483648,
+	4294967296,
+	8589934592,
+	17179869184,
+	34359738368,
+	68719476736,
+	137438953472,
+	274877906944,
+	549755813888,
+	1099511627776,
+	2199023255552,
+	4398046511104,
+	8796093022208,
+	17592186044416,
+	35184372088832,
+	70368744177664,
+	140737488355328,
+	281474976710656,
+	562949953421312,
+	1125899906842624,
+	2251799813685248,
+	4503599627370496,
+	9007199254740992,
+	18014398509481984,
+	36028797018963968,
+	72057594037927936,
+	144115188075855872,
+	288230376151711744,
+	576460752303423488,
+	1152921504606846976,
+	2305843009213693952,
+	4611686018427387904,
+	9223372036854775808,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0
+};
+
+//Black pawn moving forwards
+uint64_t bpf_table[] = {
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	1,
+	2,
+	4,
+	8,
+	16,
+	32,
+	64,
+	128,
+	256,
+	512,
+	1024,
+	2048,
+	4096,
+	8192,
+	16384,
+	32768,
+	65536,
+	131072,
+	262144,
+	524288,
+	1048576,
+	2097152,
+	4194304,
+	8388608,
+	16777216,
+	33554432,
+	67108864,
+	134217728,
+	268435456,
+	536870912,
+	1073741824,
+	2147483648,
+	4294967296,
+	8589934592,
+	17179869184,
+	34359738368,
+	68719476736,
+	137438953472,
+	274877906944,
+	549755813888,
+	1103806595072,
+	2207613190144,
+	4415226380288,
+	8830452760576,
+	17660905521152,
+	35321811042304,
+	70643622084608,
+	141287244169216,
+	281474976710656,
+	562949953421312,
+	1125899906842624,
+	2251799813685248,
+	4503599627370496,
+	9007199254740992,
+	18014398509481984,
+	36028797018963968
+};
+
 uint8_t ilog2(uint64_t i) {
 	if (i >= 9223372036854775807) return 63;
 	if (i >= 4611686018427387904) return 62;
@@ -218,7 +354,7 @@ Board create_board() {
 	uint64_t pawns = 0b11111111 << 8;
 
 	//testing
-	pawns = 0;
+	//pawns = 0;
 
 	uint64_t bishops = 0b00100100;
 	uint64_t knights = 0b01000010;
@@ -326,6 +462,31 @@ void king_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 	get_white(board, w);
 	get_black(board, b);;
 	uint8_t c = position & w ? w : b;
+
+	mask |= (attack &= ~c);
+}
+
+void pawn_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
+	//Major work in progress
+	//Needs en passant and attack moves
+	mask = 0;
+	uint8_t pos = ilog2(position);
+	uint64_t w = 0;
+	uint64_t b = 0;
+
+	get_white(board, w);
+	get_black(board, b);;
+
+	uint64_t attack;
+	uint8_t c;
+
+	if (position & w) {
+		attack = wpf_table[pos];
+		c = w;
+	} else {
+		attack = bpf_table[pos];
+		c = b;
+	}
 
 	mask |= (attack &= ~c);
 }
@@ -484,7 +645,7 @@ void rank_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 	uint8_t rfirst = countl_one((uint8_t) (right << 8-x));
 	uint8_t lfirst = countr_one((uint8_t) (left >> x+1));
 
-	left &= line >> (7 - x - lfirst); //There is a bug on this line
+	left &= line >> (7 - x - lfirst);
 	left |= (pos_line << lfirst + 1) & o;
 	right &= line << (x - rfirst);
 	right |= (pos_line >> rfirst + 1) & o;
@@ -545,6 +706,7 @@ void get_moves(const Board& board, const uint64_t& position, uint64_t& mask) {
 			switch (i) {
 			case pawns:
 				cout << "pawn move" << endl;
+				pawn_attack(board, position, mask);
 				break;
 			case bishops:
 				cout << "bishop move" << endl;
