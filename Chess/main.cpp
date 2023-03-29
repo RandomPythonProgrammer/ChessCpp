@@ -438,39 +438,36 @@ void b_l(uint64_t& pos) {
 	pos >>= 7;
 }
 
-void knight_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
+void knight_attack(const Board& board, const uint8_t& position, uint64_t& mask) {
 	mask = 0;
-	uint8_t pos = ilog2(position);
-	uint64_t attack = knight_table[pos];
+	uint64_t attack = knight_table[position];
 	uint64_t w = 0;
 	uint64_t b = 0;
 
 	get_white(board, w);
 	get_black(board, b);;
-	uint64_t c = position & w ? w : b;
+	uint64_t c = 1ULL << position & w ? w : b;
 
 	mask |= (attack & ~c);
 }
 
-void king_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
+void king_attack(const Board& board, const uint8_t& position, uint64_t& mask) {
 	mask = 0;
-	uint8_t pos = ilog2(position);
-	uint64_t attack = king_table[pos];
+	uint64_t attack = king_table[position];
 	uint64_t w = 0;
 	uint64_t b = 0;
 
 	get_white(board, w);
 	get_black(board, b);;
-	uint64_t c = position & w ? w : b;
+	uint64_t c = 1ULL << position & w ? w : b;
 
 	mask |= (attack & ~c);
 }
 
-void pawn_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
+void pawn_attack(const Board& board, const uint8_t& position, uint64_t& mask) {
 	//Major work in progress
 	//Needs en passant and attack moves
 	mask = 0;
-	uint8_t pos = ilog2(position);
 	uint64_t w = 0;
 	uint64_t b = 0;
 
@@ -480,18 +477,18 @@ void pawn_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 	uint64_t attack;
 	uint64_t c;
 
-	if (position & w) {
-		attack = wpf_table[pos];
+	if (1ULL << position & w) {
+		attack = wpf_table[position];
 		c = w;
 	} else {
-		attack = bpf_table[pos];
+		attack = bpf_table[position];
 		c = b;
 	}
 
 	mask |= (attack & ~(w|b));
 }
 
-void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
+void bishop_attack(const Board& board, const uint8_t& position, uint64_t& mask) {
 	//Need to fix the bug of the bishop exiting the board (Resolved)
 
 	/*
@@ -506,7 +503,8 @@ void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask)
 	*/
 	
 	mask = 0;
-	uint64_t pos = position;
+	uint64_t _pos = 1ULL << position;
+	uint64_t pos = _pos;
 	bool hit = false;
 	uint64_t w = 0;
 	uint64_t b = 0;
@@ -514,9 +512,9 @@ void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask)
 	get_white(board, w);
 	get_black(board, b);
 	uint64_t a = w | b;
-	uint64_t o = position & w ? b : w;
+	uint64_t o = pos & w ? b : w;
 
-	uint8_t ipos = ilog2(position);
+	uint8_t ipos = position;
 	uint8_t y = ipos >> 3;
 	uint8_t x = ipos % 8;
 
@@ -542,7 +540,7 @@ void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask)
 		mask |= pos;
 	}
 
-	pos = position;
+	pos = _pos;
 	hit = false;
 	y_ = y;
 	x_ = x;
@@ -568,7 +566,7 @@ void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask)
 		mask |= pos;
 	}
 
-	pos = position;
+	pos = _pos;
 	hit = false;
 	y_ = y;
 	x_ = x;
@@ -594,7 +592,7 @@ void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask)
 		mask |= pos;
 	}
 
-	pos = position;
+	pos = _pos;
 	hit = false;
 	y_ = y;
 	x_ = x;
@@ -623,21 +621,21 @@ void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask)
 	//There must be an easier way to do this
 }
 
-void rank_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
-	uint8_t pos = ilog2(position);
+void rank_attack(const Board& board, const uint8_t& position, uint64_t& mask) {
 	uint8_t line = 0b11111111;
+	uint64_t pos = 1ULL << position;
 
 	uint64_t w = 0;
 	uint64_t b = 0;
 
-	uint8_t y = pos >> 3 << 3;
-	uint8_t x = pos % 8;
-	uint8_t pos_line = position >> y;
+	uint8_t y = position >> 3 << 3;
+	uint8_t x = position % 8;
+	uint8_t pos_line = pos >> y;
 
 	get_white(board, w);
 	get_black(board, b);
 	uint64_t a = w | b;
-	uint8_t o = (position & w ? b : w) >> y;
+	uint8_t o = (pos & w ? b : w) >> y;
 
 	uint8_t rank = line ^ a >> y;
 	uint8_t right = rank & (uint8_t) (line >> 8-x);
@@ -653,10 +651,10 @@ void rank_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 	mask <<= y;
 }
 
-void file_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
-	uint64_t rpos = position;
+void file_attack(const Board& board, const uint8_t& position, uint64_t& mask) {
+	uint64_t rpos = 1ULL << position;
 	rotate_right(rpos);
-	uint8_t pos = log(rpos) / log(2);
+	uint8_t pos = ilog2(rpos);
 	uint8_t line = 0b11111111;
 
 	uint64_t w = 0;
@@ -688,7 +686,7 @@ void file_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 	rotate_left(mask);
 }
 
-void rook_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
+void rook_attack(const Board& board, const uint8_t& position, uint64_t& mask) {
 	uint64_t r = 0;
 	uint64_t f = 0;
 	rank_attack(board, position, r);
@@ -696,13 +694,14 @@ void rook_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 	mask = r | f;
 }
 
-void get_moves(const Board& board, const uint64_t& position, uint64_t& mask) {
+void get_moves(const Board& board, const uint8_t& position, uint64_t& mask) {
+	uint64_t pos = 1ULL << position;
 	for (int i = 0; i < 6; i++) {
 		uint64_t wboard = board[i];
 		uint64_t bboard = board[i + black];
 		uint64_t r = 0;
 		uint64_t b = 0;
-		if (wboard & position || bboard & position) {
+		if (wboard & pos || bboard & pos) {
 			switch (i) {
 			case pawns:
 				cout << "pawn move" << endl;
@@ -792,7 +791,7 @@ int main() {
 
 				if (has_selection) {
 					uint64_t moves = 0;
-					get_moves(board, selection, moves);
+					get_moves(board, selected , moves);
 					if (moves & click_pos) {
 						move(board, selection, click_pos); //selection
 						selected = pos;
