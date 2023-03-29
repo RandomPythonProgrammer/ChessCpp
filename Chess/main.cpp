@@ -351,7 +351,7 @@ uint8_t ilog2(uint64_t i) {
 }
 
 Board create_board() {
-	uint64_t pawns = 0b11111111 << 8;
+	uint64_t pawns = 0b11111111ULL << 8;
 
 	//testing
 	//pawns = 0;
@@ -447,9 +447,9 @@ void knight_attack(const Board& board, const uint64_t& position, uint64_t& mask)
 
 	get_white(board, w);
 	get_black(board, b);;
-	uint8_t c = position & w ? w : b;
+	uint64_t c = position & w ? w : b;
 
-	mask |= (attack &= ~c);
+	mask |= (attack & ~c);
 }
 
 void king_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
@@ -461,9 +461,9 @@ void king_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 
 	get_white(board, w);
 	get_black(board, b);;
-	uint8_t c = position & w ? w : b;
+	uint64_t c = position & w ? w : b;
 
-	mask |= (attack &= ~c);
+	mask |= (attack & ~c);
 }
 
 void pawn_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
@@ -478,7 +478,7 @@ void pawn_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 	get_black(board, b);;
 
 	uint64_t attack;
-	uint8_t c;
+	uint64_t c;
 
 	if (position & w) {
 		attack = wpf_table[pos];
@@ -488,7 +488,7 @@ void pawn_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
 		c = b;
 	}
 
-	mask |= (attack &= ~(w|b));
+	mask |= (attack & ~(w|b));
 }
 
 void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask) {
@@ -514,7 +514,7 @@ void bishop_attack(const Board& board, const uint64_t& position, uint64_t& mask)
 	get_white(board, w);
 	get_black(board, b);
 	uint64_t a = w | b;
-	uint8_t o = position & w ? b : w;
+	uint64_t o = position & w ? b : w;
 
 	uint8_t ipos = ilog2(position);
 	uint8_t y = ipos >> 3;
