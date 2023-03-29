@@ -452,6 +452,7 @@ void knight_attack(const Board& board, const uint8_t& position, uint64_t& mask) 
 }
 
 void king_attack(const Board& board, const uint8_t& position, uint64_t& mask) {
+	//castling needs to be added
 	mask = 0;
 	uint64_t attack = king_table[position];
 	uint64_t w = 0;
@@ -465,8 +466,7 @@ void king_attack(const Board& board, const uint8_t& position, uint64_t& mask) {
 }
 
 void pawn_attack(const Board& board, const uint8_t& position, uint64_t& mask) {
-	//Major work in progress
-	//Needs en passant and attack moves
+	//Needs en passant
 	uint64_t w = 0;
 	uint64_t b = 0;
 
@@ -662,7 +662,7 @@ void rank_attack(const Board& board, const uint8_t& position, uint64_t& mask) {
 
 void file_attack(const Board& board, const uint8_t& position, uint64_t& mask) {
 	uint64_t rpos = 1ULL << position;
-	rotate_right(rpos);
+	rotate_right(rpos); // Todo: rewrite without rotation (its probably faster)
 	uint8_t pos = ilog2(rpos); // should figure out a way to optimize this one out
 	uint8_t line = 0b11111111;
 
@@ -713,29 +713,23 @@ void get_moves(const Board& board, const uint8_t& position, uint64_t& mask) {
 		if (wboard & pos || bboard & pos) {
 			switch (i) {
 			case pawns:
-				cout << "pawn move" << endl;
 				pawn_attack(board, position, mask);
 				break;
 			case bishops:
-				cout << "bishop move" << endl;
 				bishop_attack(board, position, mask);
 				return;
 			case knights:
-				cout << "knight move" << endl;
 				knight_attack(board, position, mask);
 				break;
 			case rooks:
-				cout << "rook move" << endl;
 				rook_attack(board, position, mask);
 				return;
 			case queens:
-				cout << "queen move" << endl;
 				rook_attack(board, position, r);
 				bishop_attack(board, position, b);
 				mask = r | b;
 				return;
 			case kings:
-				cout << "king move" << endl;
 				king_attack(board, position, mask);
 				break;
 			default:
