@@ -874,10 +874,22 @@ void get_moves(const Board& board, const uint8_t& position, uint64_t& mask) {
 }
 
 void move(const Board& board, const uint64_t& start, const uint64_t& dest) {
-	for (int i = 0; i < 12; i++) {
+	for (int i = 11; i >= 0; i--) {
 		uint64_t& sub = board[i];
 		if (sub & start) {
 			sub ^= start;
+			if (i == pawns) {
+				if (dest & 18374686479671623680) {
+					board[queens] |= dest;
+					continue;
+				}
+			}
+			else if (i == black + pawns) {
+				if (dest & 255) {
+					board[black + queens] |= dest;
+					continue;
+				}
+			}
 			sub |= dest;
 		} else {
 			sub &= ~dest;
