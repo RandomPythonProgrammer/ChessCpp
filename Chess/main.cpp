@@ -740,6 +740,27 @@ void get_moves(const Board& board, const uint8_t& position, uint64_t& mask) {
 	}
 }
 
+void get_observers(const Board& board, const uint8_t& position, uint64_t& mask) {
+	mask = 0;
+	for (int i = 0; i < 12; i++) {
+		uint64_t selector = 1ULL;
+		for (int j = 0; j < 64; j++, selector<<=1) {
+			uint64_t moves = 0;
+			get_moves(board, j, moves);
+			if (moves & selector) {
+				mask |= 1ULL << j;
+			}
+		}
+	}
+}
+
+bool check(const Board& board, const color_t& color) {
+	uint8_t king_pos = countr_zero(board[kings + color == white ? 0 : black]);
+	uint64_t observers = 0;
+	get_observers(board, king_pos, observers);
+	return observers;
+}
+
 void move(const Board& board, const uint64_t& start, const uint64_t& dest) {
 	for (int i = 11; i >= 0; i--) {
 		uint64_t& sub = board[i];
