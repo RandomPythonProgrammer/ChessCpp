@@ -5,6 +5,8 @@
 using namespace std;
 
 Board::Board() {
+	previous = nullptr;
+
 	uint64_t pawns = 0b11111111ULL << 8;
 
 	uint64_t bishops = 0b00100100;
@@ -18,6 +20,36 @@ Board::Board() {
 		pawns, bishops, knights, rooks, queens, kings,
 		pawns << 40, bishops << 56, knights << 56, rooks << 56, queens << 56, kings << 56
 	};
+
+	bcasle = false;
+	wcasle = false;
+
+	bkmove = false;
+	wkmove = false;
+
+	brrmove = false;
+	wrrmove = false;
+
+	blrmove = false;
+	wlrmove = false;
+}
+
+Board::Board(Board& previous) {
+	this->previous = &previous;
+
+	board = previous.board;
+
+	bcasle = previous.bcasle;
+	wcasle = previous.wcasle;
+
+	bkmove = previous.bkmove;
+	wkmove = previous.wkmove;
+
+	brrmove = previous.brrmove;
+	wrrmove = previous.wrrmove;
+
+	blrmove = previous.blrmove;
+	wlrmove = previous.wlrmove;
 }
 
 void Board::get_white(uint64_t& mask) {
@@ -332,6 +364,31 @@ void Board::get_moves(const uint8_t& position, uint64_t& mask) {
 void Board::get_observers(const uint8_t& position, uint64_t& mask) {
 	mask = 0;
 	for (int i = 0; i < 12; i++) {
+		uint64_t selector = 1ULL;
+		for (int j = 0; j < 64; j++, selector <<= 1) {
+			uint64_t moves = 0;
+			get_moves(j, moves);
+			if (moves & selector) {
+				mask |= 1ULL << j;
+			}
+		}
+	}
+}
+
+void Board::get_attackers(const uint8_t& position, uint64_t& mask) {
+	mask = 0;
+	int min;
+	int max;
+	uint64_t b = 0;
+	get_black(b);
+	if (1ULL << position & b) {
+		min = 0;
+		max = 6;
+	} else {
+		min = 6;
+		max = 12;
+	}
+	for (int i = min; i < max; i++) {
 		uint64_t selector = 1ULL;
 		for (int j = 0; j < 64; j++, selector <<= 1) {
 			uint64_t moves = 0;

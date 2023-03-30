@@ -279,21 +279,23 @@ const uint64_t bpc_table[] = {
 class Board
 {
 public:
-	bool bcasle = false;
-	bool wcasle = false;
+	bool bcasle;
+	bool wcasle;
 
-	bool bkmove = false;
-	bool wkmove = false;
+	bool bkmove;
+	bool wkmove;
 
-	bool brrmove = false;
-	bool wrrmove = false;
+	bool brrmove;
+	bool wrrmove;
 
-	bool blrmove = false;
-	bool wlrmove = false;
+	bool blrmove;
+	bool wlrmove;
 
 	uint64_t* board;
+	Board* previous;
 
 	Board();
+	Board(Board& previous);
 
 	void get_white(uint64_t& mask);
 	void get_black(uint64_t& mask);
@@ -309,6 +311,7 @@ public:
 
 	void get_moves(const uint8_t& position, uint64_t& mask);
 	void get_observers(const uint8_t& position, uint64_t& mask);
+	void get_attackers(const uint8_t& position, uint64_t& mask);
 	bool check(const uint8_t& position, const color_t& color);
 
 	void move(const uint64_t& start, uint64_t& end);
