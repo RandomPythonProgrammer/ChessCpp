@@ -428,6 +428,11 @@ bool Board::check(const uint8_t& position, const color_t& color) {
 }
 
 void Board::move(const uint64_t& start, uint64_t& dest) {
+	uint64_t w = 0;
+	uint64_t b = 0;
+	get_white(w);
+	get_black(b);
+
 	for (int i = 11; i >= 0; i--) {
 		uint64_t& sub = board[i];
 		if (sub & start) {
@@ -437,11 +442,17 @@ void Board::move(const uint64_t& start, uint64_t& dest) {
 					board[queens] |= dest;
 					continue;
 				}
+				else if (start & 1095216660480 && !(dest & b) && !(start << 8 & dest)) {
+					board[black + pawns] &= ~(dest >> 8);
+				}
 			}
 			else if (i == black + pawns) {
 				if (dest & 255) {
 					board[black + queens] |= dest;
 					continue;
+				}
+				else if (start & 4278190080 && !(dest & w) && !(start >> 8 & dest)) {
+					board[pawns] &= ~(dest << 8);
 				}
 			}
 			sub |= dest;
