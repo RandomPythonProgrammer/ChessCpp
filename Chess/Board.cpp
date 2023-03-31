@@ -384,14 +384,12 @@ void Board::get_moves(const uint8_t& position, uint64_t& mask) {
 
 void Board::get_observers(const uint8_t& position, uint64_t& mask) {
 	mask = 0;
-	for (int i = 0; i < 12; i++) {
-		uint64_t selector = 1ULL;
-		for (int j = 0; j < 64; j++, selector <<= 1) {
-			uint64_t moves = 0;
-			get_moves(j, moves);
-			if (moves & selector) {
-				mask |= 1ULL << j;
-			}
+	uint64_t pos = 1ULL << position;
+	for (int j = 0; j < 64; j++) {
+		uint64_t moves = 0;
+		get_moves(j, moves);
+		if (moves & pos) {
+			mask |= 1ULL << j;
 		}
 	}
 }
@@ -401,31 +399,29 @@ void Board::get_attackers(const uint8_t& position, uint64_t& mask) {
 	int min;
 	int max;
 	uint64_t b = 0;
+	uint64_t w = 0;
 	get_black(b);
-	if (1ULL << position & b) {
-		min = 0;
-		max = 6;
-	} else {
-		min = 6;
-		max = 12;
-	}
-	for (int i = min; i < max; i++) {
-		uint64_t selector = 1ULL;
-		for (int j = 0; j < 64; j++, selector <<= 1) {
+	get_white(w);
+	uint64_t pos = 1ULL << position;
+	uint64_t o = pos & w ? b: w;
+
+	uint64_t selector = 1ULL;
+	for (int j = 0; j < 64; j++, selector <<= 1) {
+		if (selector & o) {
 			uint64_t moves = 0;
 			get_moves(j, moves);
-			if (moves & selector) {
-				mask |= 1ULL << j;
+			if (moves & pos) {
+				mask |= selector;
 			}
 		}
 	}
 }
 
-bool Board::check(const uint8_t& position, const color_t& color) {
-	uint8_t king_pos = countr_zero(board[kings + color == white ? 0 : black]);
-	uint64_t observers = 0;
-	get_observers(king_pos, observers);
-	return observers;
+bool Board::check(const color_t& color) {
+	uint8_t king_pos = countr_zero(board[kings + (color == white ? 0 : black)]);
+	uint64_t attackers = 0;
+	get_attackers(king_pos, attackers);
+	return attackers;
 }
 
 void Board::move(const uint64_t& start, uint64_t& dest) {

@@ -313,7 +313,7 @@ public:
 	void get_moves(const uint8_t& position, uint64_t& mask);
 	void get_observers(const uint8_t& position, uint64_t& mask);
 	void get_attackers(const uint8_t& position, uint64_t& mask);
-	bool check(const uint8_t& position, const color_t& color);
+	bool check(const color_t& color);
 
 	void move(const uint64_t& start, uint64_t& end);
 };

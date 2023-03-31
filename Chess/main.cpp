@@ -52,11 +52,16 @@ int main() {
 					uint64_t moves = 0;
 					board->get_moves(selected, moves);
 					if (moves & click_pos) {
-						board = new Board(board);
-						board->move(selection, click_pos); //selection
-						selected = pos;
-						has_selection = false;
-						color = color == white ? black : white;
+						Board* next = new Board(board);
+						next->move(selection, click_pos); //selection
+						if (!next->check(color)) {
+							board = next;
+							selected = pos;
+							has_selection = false;
+							color = color == white ? black : white;
+						} else {
+							delete next;
+						}
 						break;
 					}
 				}
