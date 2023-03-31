@@ -100,7 +100,34 @@ void Board::king_attack(const uint8_t& position, uint64_t& mask) {
 
 	get_white(w);
 	get_black(b);
-	uint64_t c = 1ULL << position & w ? w : b;
+	uint64_t c;
+	uint64_t attacks;
+	uint64_t a = w | w;
+
+	if (1ULL << position & w) {
+		c = w;
+		attacked_squares(black, attacks);
+		if (!wkmove && !check(white)) {
+			if (!wlrmove && ~(0b01110000 & (a | attacks))) {
+				mask |= 0b10000000;
+			}
+			if (!wrrmove && ~(0b00000110 & (a | attacks))) {
+				mask |= 0b00000001;
+			}
+		}
+	}
+	else {
+		c = b;
+		attacked_squares(white, attacks);
+		if (!bkmove && !check(black)) {
+			if (!blrmove && ~(8070450532247928832 & (a | attacks))) {
+				mask |= 9223372036854775808;
+			}
+			if (!brrmove && ~(432345564227567616 & (a | attacks))) {
+				mask |= 72057594037927936;
+			}
+		}
+	}
 
 	mask |= (attack & ~c);
 }
@@ -387,7 +414,7 @@ void Board::get_observers(const uint8_t& position, uint64_t& mask) {
 	uint64_t pos = 1ULL << position;
 	for (int j = 0; j < 64; j++) {
 		uint64_t moves = 0;
-		get_moves(j, moves);
+		get_attacks(j, moves);
 		if (moves & pos) {
 			mask |= 1ULL << j;
 		}
@@ -396,8 +423,6 @@ void Board::get_observers(const uint8_t& position, uint64_t& mask) {
 
 void Board::get_attackers(const uint8_t& position, uint64_t& mask) {
 	mask = 0;
-	int min;
-	int max;
 	uint64_t b = 0;
 	uint64_t w = 0;
 	get_black(b);
@@ -409,10 +434,33 @@ void Board::get_attackers(const uint8_t& position, uint64_t& mask) {
 	for (int j = 0; j < 64; j++, selector <<= 1) {
 		if (selector & o) {
 			uint64_t moves = 0;
-			get_moves(j, moves);
+			get_attacks(j, moves);
 			if (moves & pos) {
 				mask |= selector;
 			}
+		}
+	}
+}
+
+void Board::get_attacks(const uint8_t& position, uint64_t& mask) {
+	uint64_t pos = 1ULL << position;
+	if (pos & board[kings] || pos & board[black + kings]) {
+		mask |= king_table[position];
+	}
+	else {
+		get_moves(position, mask);
+	}
+}
+
+void Board::attacked_squares(const color_t color, uint64_t& mask) {
+	uint64_t a;
+	color == white ? get_white(a) : get_black(a);
+	uint64_t selector = 0;
+	for (int j = 0; j < 64; j++, selector <<= 1) {
+		if (selector & a) {
+			uint64_t moves = 0;
+			get_attacks(j, moves);
+			mask |= moves;
 		}
 	}
 }
@@ -451,7 +499,55 @@ void Board::move(const uint64_t& start, uint64_t& dest) {
 				else if (start & 4278190080 && !(dest & w) && !(start >> 8 & dest)) {
 					board[pawns] &= ~(dest << 8);
 				}
+			} else if (i == rooks) {
+				if (dest & 0b10000000) {
+					wrrmove = true;
+				} else {
+					wlrmove = true;
+				}
 			}
+			else if (i == black + rooks) {
+				if (dest & 9223372036854775808) {
+					brrmove = true;
+				} else {
+					blrmove = true;
+				}
+			}
+			else if (i == kings) {
+				wkmove = true;
+				if (dest & board[rooks]) {
+					if (dest & 0b10000000) {
+						board[kings] |= 0b00100000;
+						board[rooks] &= ~dest;
+						board[rooks] |= 0b00010000;
+					}
+					else {
+						board[kings] |= 0b00000010;
+						board[rooks] &= ~dest;
+						board[rooks] |= 0b00000100;
+					}
+					wcasle = true;
+					return;
+				}
+			}
+			else if (i == black + kings) {
+				bkmove = true;
+				if (dest & board[black + rooks]) {
+					if (dest & 9223372036854775808) {
+						board[black + kings] |= 2305843009213693952;
+						board[black + rooks] &= ~dest;
+						board[black + rooks] |= 1152921504606846976;
+					}
+					else {
+						board[black + kings] |= 144115188075855872;
+						board[black + rooks] &= ~dest;
+						board[black + rooks] |= 288230376151711744;
+					}
+					bcasle = true;
+					return;
+				}
+			}
+
 			sub |= dest;
 		}
 		else {
