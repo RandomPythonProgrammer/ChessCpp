@@ -6,6 +6,8 @@
 
 using namespace std;
 
+const int EVAL_DEPTH = 20;
+
 Board::Board() {
 	previous = nullptr;
 
@@ -192,12 +194,11 @@ void Board::bishop_attack(const uint8_t& position, uint64_t& mask) {
 	uint64_t a = w | b;
 	uint64_t o = pos & w ? b : w;
 
-	uint8_t ipos = position;
-	uint8_t y = ipos >> 3;
-	uint8_t x = ipos % 8;
+	uint8_t y = position >> 3;
+	uint8_t x = position % 8;
 
-	uint8_t y_ = y;
-	uint8_t x_ = x;
+	int y_ = y;
+	int x_ = x;
 
 	for (int i = 0; i < 7; i++) {
 		y_++;
@@ -207,17 +208,15 @@ void Board::bishop_attack(const uint8_t& position, uint64_t& mask) {
 		}
 		pos <<= 7;
 		if (o & pos) {
-			if (hit) {
-				break;
-			}
-			else {
-				hit = true;
-			}
+			hit = true;
 		}
 		else if (a & pos) {
 			break;
 		}
 		mask |= pos;
+		if (hit) {
+			break;
+		}
 	}
 
 	pos = _pos;
@@ -233,17 +232,15 @@ void Board::bishop_attack(const uint8_t& position, uint64_t& mask) {
 		}
 		pos <<= 9;
 		if (o & pos) {
-			if (hit) {
-				break;
-			}
-			else {
-				hit = true;
-			}
+			hit = true;
 		}
 		else if (a & pos) {
 			break;
 		}
 		mask |= pos;
+		if (hit) {
+			break;
+		}
 	}
 
 	pos = _pos;
@@ -259,17 +256,15 @@ void Board::bishop_attack(const uint8_t& position, uint64_t& mask) {
 		}
 		pos >>= 9;
 		if (o & pos) {
-			if (hit) {
-				break;
-			}
-			else {
-				hit = true;
-			}
+			hit = true;
 		}
 		else if (a & pos) {
 			break;
 		}
 		mask |= pos;
+		if (hit) {
+			break;
+		}
 	}
 
 	pos = _pos;
@@ -285,17 +280,15 @@ void Board::bishop_attack(const uint8_t& position, uint64_t& mask) {
 		}
 		pos >>= 7;
 		if (o & pos) {
-			if (hit) {
-				break;
-			}
-			else {
-				hit = true;
-			}
+			hit = true;
 		}
 		else if (a & pos) {
 			break;
 		}
 		mask |= pos;
+		if (hit) {
+			break;
+		}
 	}
 
 	//There must be an easier way to do this
@@ -478,6 +471,7 @@ bool Board::checkmate(const color_t& color) {
 	if (check(color)) {
 		uint64_t selector = 1;
 		uint64_t pieces = 0;
+		color == white ? get_white(pieces) : get_black(pieces);
 		for (int i = 0; i < 64; i++, selector <<= 1) {
 			if (pieces & selector) {
 				uint64_t moves = 0;
@@ -487,7 +481,7 @@ bool Board::checkmate(const color_t& color) {
 					if (selector2 & moves) {
 						Board* next = new Board(this);
 						next->move(selector, selector2);
-						bool check = !next->check(color);
+						bool check = next->check(color);
 						delete next;
 						if (!check) {
 							return false;
@@ -625,9 +619,14 @@ Board* Board::get_best(color_t color) {
 				if (selector2 & moves) {
 					Board* next = new Board(this);
 					next->move(selector, selector2);
-					double alpha = numeric_limits<double>::min();
-					double beta = numeric_limits<double>::max();
-					map.emplace(next, async(reval, next, color, color == white ? black : white, 0, 9, &alpha, &beta));
+					if (!next->check(color)) {
+						double alpha = numeric_limits<double>::min();
+						double beta = numeric_limits<double>::max();
+						map.emplace(next, async(reval, next, color, color == white ? black : white, 0, &alpha, &beta));
+					}
+					else {
+						delete next;
+					}
 				}
 			}
 		}
@@ -637,7 +636,8 @@ Board* Board::get_best(color_t color) {
 
 	for (pair<Board* const, future<double>> &p : map) {
 		double val = p.second.get();
-		if (val > best) {
+		cout << val << endl;
+		if (val >= best) {
 			best = val;
 			delete best_board;
 			best_board = p.first;
@@ -646,12 +646,18 @@ Board* Board::get_best(color_t color) {
 			delete p.first;
 		}
 	}
+	cout << "------------" << endl;
+	cout << best << endl;
+	cout << "******************" << endl;
+	if (best_board == nullptr) {
+		cout << "error getting move" << endl;
+	}
 	return best_board;
 }
 
-double reval(Board* board, color_t og_color, color_t curr_color, int depth, int max_depth, double* alpha, double* beta) {
+double reval(Board* board, color_t og_color, color_t curr_color, int depth, double* alpha, double* beta) {
 	double eval = board->evaluate(og_color)/board->evaluate(og_color == white? black: white);
-	if (depth >= max_depth || (curr_color == og_color && eval < *alpha) || (curr_color != og_color && eval > *beta)) {
+	if (depth >= EVAL_DEPTH || (curr_color == og_color && eval < *alpha) || (curr_color != og_color && eval > *beta)) {
 		return eval;
 	}
 	uint64_t selector = 1;
@@ -668,14 +674,14 @@ double reval(Board* board, color_t og_color, color_t curr_color, int depth, int 
 				if (selector2 & moves) {
 					Board* next = new Board(board);
 					next->move(selector, selector2);
-					double val = reval(next, og_color, curr_color == white ? black : white, depth + 1, max_depth, alpha, beta);
+					double val = reval(next, og_color, curr_color == white ? black : white, depth + 1, alpha, beta);
 					if (is_color) {
 						value = max(val, value);
-						*alpha = value;
+						*alpha = max(*alpha, value);
 					}
 					else {
 						value = min(val, value);
-						*beta = value;
+						*beta = min(*beta, value);
 					}
 				}
 			}

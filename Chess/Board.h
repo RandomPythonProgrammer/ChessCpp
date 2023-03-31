@@ -328,4 +328,4 @@ public:
 	Board* get_best(color_t color);
 };
 
-double reval(Board* board, color_t og_color, color_t curr_color, int depth, int max_depth, double* alpha, double* beta);
+double reval(Board* board, color_t og_color, color_t curr_color, int depth, double* alpha, double* beta);
