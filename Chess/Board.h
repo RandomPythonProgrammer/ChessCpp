@@ -4,6 +4,11 @@
 
 enum piece_t { pawns, bishops, knights, rooks, queens, kings };
 
+const uint8_t value_table[] = {
+	1, 3, 3, 5, 9, 0,
+	1, 3, 3, 5, 9, 0
+};
+
 enum color_t { white = 0, black = 6 };
 
 const uint64_t knight_table[] = {
@@ -316,6 +321,11 @@ public:
 	void get_attackers(const uint8_t& position, uint64_t& mask);
 	void attacked_squares(const color_t color, uint64_t& mask);
 	bool check(const color_t& color);
+	bool checkmate(const color_t& color);
 
 	void move(const uint64_t& start, uint64_t& end);
+	double evaluate(color_t color);
+	Board* get_best(color_t color);
 };
+
+double reval(Board* board, color_t og_color, color_t curr_color, int depth, int max_depth, double* alpha, double* beta);

@@ -1,6 +1,8 @@
 #include "board.h"
 #include "util.h"
 #include <iostream>
+#include <unordered_map>
+#include <future>
 
 using namespace std;
 
@@ -102,16 +104,16 @@ void Board::king_attack(const uint8_t& position, uint64_t& mask) {
 	get_black(b);
 	uint64_t c;
 	uint64_t attacks;
-	uint64_t a = w | w;
+	uint64_t a = w | b;
 
 	if (1ULL << position & w) {
 		c = w;
 		attacked_squares(black, attacks);
 		if (!wkmove && !check(white)) {
-			if (!wlrmove && ~(0b01110000 & (a | attacks))) {
+			if (!wlrmove && !(0b01110000 & (a | attacks))) {
 				mask |= 0b10000000;
 			}
-			if (!wrrmove && ~(0b00000110 & (a | attacks))) {
+			if (!wrrmove && !(0b00000110 & (a | attacks))) {
 				mask |= 0b00000001;
 			}
 		}
@@ -120,10 +122,10 @@ void Board::king_attack(const uint8_t& position, uint64_t& mask) {
 		c = b;
 		attacked_squares(white, attacks);
 		if (!bkmove && !check(black)) {
-			if (!blrmove && ~(8070450532247928832 & (a | attacks))) {
+			if (!blrmove && !(8070450532247928832 & (a | attacks))) {
 				mask |= 9223372036854775808;
 			}
-			if (!brrmove && ~(432345564227567616 & (a | attacks))) {
+			if (!brrmove && !(432345564227567616 & (a | attacks))) {
 				mask |= 72057594037927936;
 			}
 		}
@@ -200,7 +202,7 @@ void Board::bishop_attack(const uint8_t& position, uint64_t& mask) {
 	for (int i = 0; i < 7; i++) {
 		y_++;
 		x_--;
-		if (y > 7 || x < 0) {
+		if (y_ > 7 || x_ < 0) {
 			break;
 		}
 		pos <<= 7;
@@ -226,7 +228,7 @@ void Board::bishop_attack(const uint8_t& position, uint64_t& mask) {
 	for (int i = 0; i < 7; i++) {
 		y_++;
 		x_++;
-		if (y > 7 || x > 7) {
+		if (y_ > 7 || x_ > 7) {
 			break;
 		}
 		pos <<= 9;
@@ -252,7 +254,7 @@ void Board::bishop_attack(const uint8_t& position, uint64_t& mask) {
 	for (int i = 0; i < 7; i++) {
 		y_--;
 		x_--;
-		if (y < 0 || x < 0) {
+		if (y_ < 0 || x_ < 0) {
 			break;
 		}
 		pos >>= 9;
@@ -278,7 +280,7 @@ void Board::bishop_attack(const uint8_t& position, uint64_t& mask) {
 	for (int i = 0; i < 7; i++) {
 		y_--;
 		x_++;
-		if (y < 0 || x > 7) {
+		if (y_ < 0 || x_ > 7) {
 			break;
 		}
 		pos >>= 7;
@@ -472,6 +474,33 @@ bool Board::check(const color_t& color) {
 	return attackers;
 }
 
+bool Board::checkmate(const color_t& color) {
+	if (check(color)) {
+		uint64_t selector = 1;
+		uint64_t pieces = 0;
+		for (int i = 0; i < 64; i++, selector <<= 1) {
+			if (pieces & selector) {
+				uint64_t moves = 0;
+				uint64_t selector2 = 1;
+				get_moves(i, moves);
+				for (int j = 0; j < 64; j++, selector2 <<= 1) {
+					if (selector2 & moves) {
+						Board* next = new Board(this);
+						next->move(selector, selector2);
+						bool check = !next->check(color);
+						delete next;
+						if (!check) {
+							return false;
+						}
+					}
+				}
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
 void Board::move(const uint64_t& start, uint64_t& dest) {
 	uint64_t w = 0;
 	uint64_t b = 0;
@@ -556,4 +585,101 @@ void Board::move(const uint64_t& start, uint64_t& dest) {
 	}
 }
 
+double Board::evaluate(color_t color) {
 
+	if (checkmate(color)) {
+		return numeric_limits<double>::min();
+	}
+
+	int min;
+	int max;
+	double value = 0;
+	uint64_t pieces = 0;
+	if (color == white) {
+		get_white(pieces);
+		min = 0;
+		max = 6;
+	}
+	else {
+		get_black(pieces);
+		min = 6;
+		max = 12;
+	}
+	for (int i = min; i < max; i++) {
+		value += value_table[i] * popcount(board[i]);
+	}
+	return value;
+}
+
+Board* Board::get_best(color_t color) {
+	unordered_map<Board*, future<double>> map;
+	uint64_t selector = 1;
+	uint64_t pieces = 0;
+	color == white ? get_white(pieces) : get_black(pieces);
+	for (int i = 0; i < 64; i++, selector <<= 1) {
+		if (pieces & selector) {
+			uint64_t moves = 0;
+			uint64_t selector2 = 1;
+			get_moves(i, moves);
+			for (int j = 0; j < 64; j++, selector2 <<= 1) {
+				if (selector2 & moves) {
+					Board* next = new Board(this);
+					next->move(selector, selector2);
+					double alpha = numeric_limits<double>::min();
+					double beta = numeric_limits<double>::max();
+					map.emplace(next, async(reval, next, color, color == white ? black : white, 0, 9, &alpha, &beta));
+				}
+			}
+		}
+	}
+	double best = numeric_limits<double>::min();
+	Board* best_board = nullptr;
+
+	for (pair<Board* const, future<double>> &p : map) {
+		double val = p.second.get();
+		if (val > best) {
+			best = val;
+			delete best_board;
+			best_board = p.first;
+		}
+		else {
+			delete p.first;
+		}
+	}
+	return best_board;
+}
+
+double reval(Board* board, color_t og_color, color_t curr_color, int depth, int max_depth, double* alpha, double* beta) {
+	double eval = board->evaluate(og_color)/board->evaluate(og_color == white? black: white);
+	if (depth >= max_depth || (curr_color == og_color && eval < *alpha) || (curr_color != og_color && eval > *beta)) {
+		return eval;
+	}
+	uint64_t selector = 1;
+	uint64_t pieces = 0;
+	bool is_color = curr_color == og_color;
+	double value = is_color ? numeric_limits<double>::min() : numeric_limits<double>::max();
+	curr_color == white ? board->get_white(pieces) : board->get_black(pieces);
+	for (int i = 0; i < 64; i++, selector <<= 1) {
+		if (pieces & selector) {
+			uint64_t moves = 0;
+			uint64_t selector2 = 1;
+			board->get_moves(i, moves);
+			for (int j = 0; j < 64; j++, selector2 <<= 1) {
+				if (selector2 & moves) {
+					Board* next = new Board(board);
+					next->move(selector, selector2);
+					double val = reval(next, og_color, curr_color == white ? black : white, depth + 1, max_depth, alpha, beta);
+					if (is_color) {
+						value = max(val, value);
+						*alpha = value;
+					}
+					else {
+						value = min(val, value);
+						*beta = value;
+					}
+				}
+			}
+		}
+	}
+	return value;
+}

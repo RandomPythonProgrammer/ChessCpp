@@ -58,7 +58,9 @@ int main() {
 							board = next;
 							selected = pos;
 							has_selection = false;
-							color = color == white ? black : white;
+							//color = color == white ? black : white;
+							board = board->get_best(black);
+							printf("White value: %f, Black value: %f\n", board->evaluate(white), board->evaluate(black));
 						} else {
 							delete next;
 						}
