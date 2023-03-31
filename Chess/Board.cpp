@@ -34,22 +34,31 @@ Board::Board() {
 	wlrmove = false;
 }
 
-Board::Board(Board& previous) {
-	this->previous = &previous;
+Board::Board(Board* previous) {
+	this->previous = previous;
 
-	board = previous.board;
+	uint64_t* pboard = previous->board;
 
-	bcasle = previous.bcasle;
-	wcasle = previous.wcasle;
+	board = new uint64_t[12];
+	for (int i = 0; i < 12; i++) {
+		board[i] = pboard[i];
+	}
 
-	bkmove = previous.bkmove;
-	wkmove = previous.wkmove;
+	bcasle = previous->bcasle;
+	wcasle = previous->wcasle;
 
-	brrmove = previous.brrmove;
-	wrrmove = previous.wrrmove;
+	bkmove = previous->bkmove;
+	wkmove = previous->wkmove;
 
-	blrmove = previous.blrmove;
-	wlrmove = previous.wlrmove;
+	brrmove = previous->brrmove;
+	wrrmove = previous->wrrmove;
+
+	blrmove = previous->blrmove;
+	wlrmove = previous->wlrmove;
+}
+
+Board::~Board() {
+	delete board;
 }
 
 void Board::get_white(uint64_t& mask) {
@@ -105,11 +114,21 @@ void Board::pawn_attack(const uint8_t& position, uint64_t& mask) {
 	get_black(b);
 
 	uint64_t a = w | b;
-	uint64_t m = 1ULL << position;
+	uint64_t pos = 1ULL << position;
+	uint64_t m = pos;
+
+	uint8_t y = position >> 3 << 3;
 
 	mask = 0;
 
 	if (m & w) {
+		//en passant white
+		if (m & 1095216660480 && previous) {
+			uint8_t epawns = board[black + pawns] >> y;
+			epawns &= (uint8_t) ((previous->board[black + pawns] >> y) >> 16);
+			mask |= (((uint64_t) epawns) << y) << 8;
+		}
+
 		if ((m <<= 8) & ~a) {
 			mask |= m;
 			if (m & 16711680 && (m <<= 8) & ~a) {
@@ -119,6 +138,13 @@ void Board::pawn_attack(const uint8_t& position, uint64_t& mask) {
 		mask |= wpc_table[position] & b;
 	}
 	else {
+		//en passant black
+		if (m & 4278190080 && previous) {
+			uint8_t epawns = board[pawns] >> y;
+			epawns &= (uint8_t)((previous->board[pawns] << 16) >> y);
+			mask |= (((uint64_t)epawns) << y) >> 8;
+		}
+
 		if ((m >>= 8) & ~a) {
 			mask |= m;
 			if (m & 280375465082880 && (m >>= 8) & ~a) {

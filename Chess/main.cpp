@@ -17,7 +17,7 @@ int main() {
 		load_texture("wp.png"), load_texture("wb.png"), load_texture("wn.png"), load_texture("wr.png"), load_texture("wq.png"), load_texture("wk.png"),
 		load_texture("bp.png"), load_texture("bb.png"), load_texture("bn.png"), load_texture("br.png"), load_texture("bq.png"), load_texture("bk.png")
 	};
-	Board board;
+	Board* board = new Board();
 
 	RectangleShape square(Vector2f(piece_size, piece_size));
 	square.setFillColor(Color::Green);
@@ -46,14 +46,17 @@ int main() {
 				uint64_t click_pos = 1ULL << pos;
 				uint64_t selection = 1ULL << selected;
 				uint64_t mask = 0ULL;
-				color == white ? board.get_white(mask) : board.get_black(mask);
+				color == white ? board->get_white(mask) : board->get_black(mask);
 
 				if (has_selection) {
 					uint64_t moves = 0;
-					board.get_moves(selected , moves);
+					board->get_moves(selected, moves);
 					if (moves & click_pos) {
-						board.move(selection, click_pos); //selection
+						board = new Board(board);
+						board->move(selection, click_pos); //selection
 						selected = pos;
+						has_selection = false;
+						color = color == white ? black : white;
 						break;
 					}
 				}
@@ -78,7 +81,7 @@ int main() {
 
 		for (int i = 0; i < 12; i++) {
 			Texture texture = *textures[i];
-			uint64_t sub = board.board[i];
+			uint64_t sub = board->board[i];
 			Sprite sprite(texture);
 			for (int j = 0; j < 64; j++) {
 				int row = j / 8;

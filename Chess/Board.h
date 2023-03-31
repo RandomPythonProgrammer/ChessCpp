@@ -295,7 +295,8 @@ public:
 	Board* previous;
 
 	Board();
-	Board(Board& previous);
+	Board(Board* previous);
+	~Board();
 
 	void get_white(uint64_t& mask);
 	void get_black(uint64_t& mask);
