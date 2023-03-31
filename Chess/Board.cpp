@@ -129,12 +129,9 @@ void Board::pawn_attack(const uint8_t& position, uint64_t& mask) {
 			mask |= (((uint64_t) epawns) << y) << 8;
 		}
 
-		if ((m <<= 8) & ~a) {
-			mask |= m;
-			if (m & 16711680 && (m <<= 8) & ~a) {
-				mask |= m;
-			}
-		}
+		mask |= m = m << 8 & ~a;
+		mask |= m = (m & 16711680) << 8 & ~a;
+
 		mask |= wpc_table[position] & b;
 	}
 	else {
@@ -145,12 +142,9 @@ void Board::pawn_attack(const uint8_t& position, uint64_t& mask) {
 			mask |= (((uint64_t)epawns) << y) >> 8;
 		}
 
-		if ((m >>= 8) & ~a) {
-			mask |= m;
-			if (m & 280375465082880 && (m >>= 8) & ~a) {
-				mask |= m;
-			}
-		}
+		mask |= m = m >> 8 & ~a;
+		mask |= m = (m & 280375465082880) >> 8 & ~a;
+
 		mask |= bpc_table[position] & w;
 	}
 }
