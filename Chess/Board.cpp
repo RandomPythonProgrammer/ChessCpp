@@ -6,7 +6,7 @@
 
 using namespace std;
 
-const int EVAL_DEPTH = 20;
+const int EVAL_DEPTH = 5;
 
 Board::Board() {
 	previous = nullptr;
@@ -657,7 +657,7 @@ Board* Board::get_best(color_t color) {
 
 double reval(Board* board, color_t og_color, color_t curr_color, int depth, double* alpha, double* beta) {
 	double eval = board->evaluate(og_color)/board->evaluate(og_color == white? black: white);
-	if (depth >= EVAL_DEPTH || (curr_color == og_color && eval < *alpha) || (curr_color != og_color && eval > *beta)) {
+	if (depth >= EVAL_DEPTH) {
 		return eval;
 	}
 	uint64_t selector = 1;
@@ -675,12 +675,19 @@ double reval(Board* board, color_t og_color, color_t curr_color, int depth, doub
 					Board* next = new Board(board);
 					next->move(selector, selector2);
 					double val = reval(next, og_color, curr_color == white ? black : white, depth + 1, alpha, beta);
+					delete next;
 					if (is_color) {
 						value = max(val, value);
+						if (value > *beta) {
+							return value;
+						}
 						*alpha = max(*alpha, value);
 					}
 					else {
 						value = min(val, value);
+						if (value < *alpha) {
+							return value;
+						}
 						*beta = min(*beta, value);
 					}
 				}

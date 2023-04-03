@@ -86,6 +86,7 @@ void rotate_right(uint64_t& mask) {
 			mask |= ((uint64_t)val) << (7 - j) + i * 8;
 		}
 	}
+	delete ranks;
 }
 
 void rotate_left(uint64_t& mask) {
@@ -101,4 +102,5 @@ void rotate_left(uint64_t& mask) {
 			mask |= ((uint64_t)val) << j + i * 8;
 		}
 	}
+	delete ranks;
 }
