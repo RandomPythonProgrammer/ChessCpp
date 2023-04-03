@@ -72,35 +72,3 @@ Texture* load_texture(string path) {
 	texture->loadFromFile("res\\" + path);
 	return texture;
 }
-
-void rotate_right(uint64_t& mask) {
-	uint8_t copy = mask;
-	uint8_t* ranks = new uint8_t[8];
-	for (int i = 0; i < 8; i++) {
-		ranks[i] = mask >> 8 * i;
-	}
-	mask = 0;
-	for (int i = 0; i < 8; i++) {
-		for (int j = 0; j < 8; j++) {
-			bool val = ranks[j] & (1 << i);
-			mask |= ((uint64_t)val) << (7 - j) + i * 8;
-		}
-	}
-	delete ranks;
-}
-
-void rotate_left(uint64_t& mask) {
-	uint8_t copy = mask;
-	uint8_t* ranks = new uint8_t[8];
-	for (int i = 0; i < 8; i++) {
-		ranks[i] = mask >> 8 * i;
-	}
-	mask = 0;
-	for (int i = 0; i < 8; i++) {
-		for (int j = 0; j < 8; j++) {
-			bool val = ranks[j] & (1 << 7 - i);
-			mask |= ((uint64_t)val) << j + i * 8;
-		}
-	}
-	delete ranks;
-}

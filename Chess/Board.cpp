@@ -325,38 +325,66 @@ void Board::rank_attack(const uint8_t& position, uint64_t& mask) {
 }
 
 void Board::file_attack(const uint8_t& position, uint64_t& mask) {
-	uint64_t rpos = 1ULL << position;
-	rotate_right(rpos); // Todo: rewrite without rotation (its probably faster)
-	uint8_t pos = ilog2(rpos); // should figure out a way to optimize this one out
-	uint8_t line = 0b11111111;
-
+	mask = 0;
+	uint64_t _pos = 1ULL << position;
+	uint64_t pos = _pos;
+	bool hit = false;
 	uint64_t w = 0;
 	uint64_t b = 0;
 
-	uint8_t y = pos >> 3 << 3;
-	uint8_t x = pos % 8;
-	uint8_t pos_line = rpos >> y;
-
 	get_white(w);
 	get_black(b);
-	rotate_right(w);
-	rotate_right(b);
 	uint64_t a = w | b;
-	uint8_t o = (rpos & w ? b : w) >> y;
+	uint64_t o = pos & w ? b : w;
 
-	uint8_t rank = line ^ a >> y;
-	uint8_t right = rank & (uint8_t)(line >> 8 - x);
-	uint8_t left = rank & (uint8_t)(line << x + 1);
-	uint8_t rfirst = countl_one((uint8_t)(right << 8 - x));
-	uint8_t lfirst = countr_one((uint8_t)(left >> x + 1));
+	uint8_t y = position >> 3;
+	uint8_t x = position % 8;
 
-	left &= line >> (7 - x - lfirst);
-	left |= (pos_line << lfirst + 1) & o;
-	right &= line << (x - rfirst);
-	right |= (pos_line >> rfirst + 1) & o;
-	mask = (left | right);
-	mask <<= y;
-	rotate_left(mask);
+	int y_ = y;
+	int x_ = x;
+
+	//up
+	for (int i = 0; i < 7; i++) {
+		y_++;
+		if (y_ > 7) {
+			break;
+		}
+		pos <<= 8;
+		if (o & pos) {
+			hit = true;
+		}
+		else if (a & pos) {
+			break;
+		}
+		mask |= pos;
+		if (hit) {
+			break;
+		}
+	}
+
+	pos = _pos;
+	hit = false;
+	y_ = y;
+	x_ = x;
+
+	//down
+	for (int i = 0; i < 7; i++) {
+		y_--;
+		if (y_ < 0) {
+			break;
+		}
+		pos >>= 8;
+		if (o & pos) {
+			hit = true;
+		}
+		else if (a & pos) {
+			break;
+		}
+		mask |= pos;
+		if (hit) {
+			break;
+		}
+	}
 }
 
 void Board::rook_attack(const uint8_t& position, uint64_t& mask) {
@@ -580,11 +608,6 @@ void Board::move(const uint64_t& start, uint64_t& dest) {
 }
 
 double Board::evaluate(color_t color) {
-
-	if (checkmate(color)) {
-		return numeric_limits<double>::min();
-	}
-
 	int min;
 	int max;
 	double value = 0;
@@ -610,6 +633,8 @@ Board* Board::get_best(color_t color) {
 	uint64_t selector = 1;
 	uint64_t pieces = 0;
 	color == white ? get_white(pieces) : get_black(pieces);
+	double alpha = numeric_limits<double>::min();
+	double beta = numeric_limits<double>::max();
 	for (int i = 0; i < 64; i++, selector <<= 1) {
 		if (pieces & selector) {
 			uint64_t moves = 0;
@@ -620,8 +645,6 @@ Board* Board::get_best(color_t color) {
 					Board* next = new Board(this);
 					next->move(selector, selector2);
 					if (!next->check(color)) {
-						double alpha = numeric_limits<double>::min();
-						double beta = numeric_limits<double>::max();
 						map.emplace(next, async(reval, next, color, color == white ? black : white, 0, &alpha, &beta));
 					}
 					else {
@@ -656,9 +679,15 @@ Board* Board::get_best(color_t color) {
 }
 
 double reval(Board* board, color_t og_color, color_t curr_color, int depth, double* alpha, double* beta) {
-	double eval = board->evaluate(og_color)/board->evaluate(og_color == white? black: white);
+	color_t op_color = curr_color == white ? black : white;
+	if (board->checkmate(og_color)) {
+		return numeric_limits<double>::min();
+	}
+	if (board->checkmate(op_color)) {
+		return numeric_limits<double>::max();
+	}
 	if (depth >= EVAL_DEPTH) {
-		return eval;
+		return board->evaluate(og_color) / board->evaluate(og_color == white? black: white);
 	}
 	uint64_t selector = 1;
 	uint64_t pieces = 0;
@@ -674,7 +703,7 @@ double reval(Board* board, color_t og_color, color_t curr_color, int depth, doub
 				if (selector2 & moves) {
 					Board* next = new Board(board);
 					next->move(selector, selector2);
-					double val = reval(next, og_color, curr_color == white ? black : white, depth + 1, alpha, beta);
+					double val = reval(next, og_color, op_color, depth + 1, alpha, beta);
 					delete next;
 					if (is_color) {
 						value = max(val, value);

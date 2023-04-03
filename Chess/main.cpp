@@ -60,7 +60,12 @@ int main() {
 							has_selection = false;
 							//color = color == white ? black : white;
 							board = board->get_best(black);
-							printf("White value: %f, Black value: %f\n", board->evaluate(white), board->evaluate(black));
+							if (board) {
+								printf("White value: %f, Black value: %f\n", board->evaluate(white), board->evaluate(black));
+							}
+							else {
+								cout << "Checkmate" << endl;
+							}
 						} else {
 							delete next;
 						}
