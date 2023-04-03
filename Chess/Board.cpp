@@ -453,15 +453,15 @@ void Board::get_attackers(const uint8_t& position, uint64_t& mask) {
 	uint64_t pos = 1ULL << position;
 	uint64_t o = pos & w ? b: w;
 
-	uint64_t selector = 1ULL;
-	for (int j = 0; j < 64; j++, selector <<= 1) {
-		if (selector & o) {
-			uint64_t moves = 0;
-			get_attacks(j, moves);
-			if (moves & pos) {
-				mask |= selector;
-			}
+	int leading;
+	while (o) {
+		leading = ilog2(o);
+		uint64_t moves = 0;
+		get_attacks(leading, moves);
+		if (moves & pos) {
+			mask |= 1 << leading;
 		}
+		o -= ipow2[leading];
 	}
 }
 
@@ -479,12 +479,13 @@ void Board::attacked_squares(const color_t color, uint64_t& mask) {
 	uint64_t a;
 	color == white ? get_white(a) : get_black(a);
 	uint64_t selector = 0;
-	for (int j = 0; j < 64; j++, selector <<= 1) {
-		if (selector & a) {
-			uint64_t moves = 0;
-			get_attacks(j, moves);
-			mask |= moves;
-		}
+	int leading;
+	while (a) {
+		leading = ilog2(a);
+		uint64_t moves = 0;
+		get_attacks(leading, moves);
+		mask |= moves;
+		a -= ipow2[leading];
 	}
 }
 
@@ -497,33 +498,33 @@ bool Board::check(const color_t& color) {
 
 bool Board::checkmate(const color_t& color) {
 	if (check(color)) {
-		uint64_t selector = 1;
 		uint64_t pieces = 0;
 		color == white ? get_white(pieces) : get_black(pieces);
-		for (int i = 0; i < 64; i++, selector <<= 1) {
-			if (pieces & selector) {
-				uint64_t moves = 0;
-				uint64_t selector2 = 1;
-				get_moves(i, moves);
-				for (int j = 0; j < 64; j++, selector2 <<= 1) {
-					if (selector2 & moves) {
-						Board* next = new Board(this);
-						next->move(selector, selector2);
-						bool check = next->check(color);
-						delete next;
-						if (!check) {
-							return false;
-						}
-					}
+		int p_leading;
+		while (pieces) {
+			p_leading = ilog2(pieces);
+			uint64_t moves = 0;
+			get_moves(p_leading, moves);
+			int m_leading;
+			while (moves) {
+				m_leading = ilog2(moves);
+				Board* next = new Board(this);
+				next->move(1ULL << p_leading, 1ULL << m_leading);
+				bool check = next->check(color);
+				delete next;
+				if (!check) {
+					return false;
 				}
+				moves -= ipow2[m_leading];
 			}
+			pieces -= ipow2[p_leading];
 		}
 		return true;
 	}
 	return false;
 }
 
-void Board::move(const uint64_t& start, uint64_t& dest) {
+void Board::move(const uint64_t& start, const uint64_t& dest) {
 	uint64_t w = 0;
 	uint64_t b = 0;
 	get_white(w);
@@ -630,29 +631,29 @@ double Board::evaluate(color_t color) {
 
 Board* Board::get_best(color_t color) {
 	unordered_map<Board*, future<double>> map;
-	uint64_t selector = 1;
 	uint64_t pieces = 0;
 	color == white ? get_white(pieces) : get_black(pieces);
 	double alpha = numeric_limits<double>::min();
 	double beta = numeric_limits<double>::max();
-	for (int i = 0; i < 64; i++, selector <<= 1) {
-		if (pieces & selector) {
-			uint64_t moves = 0;
-			uint64_t selector2 = 1;
-			get_moves(i, moves);
-			for (int j = 0; j < 64; j++, selector2 <<= 1) {
-				if (selector2 & moves) {
-					Board* next = new Board(this);
-					next->move(selector, selector2);
-					if (!next->check(color)) {
-						map.emplace(next, async(reval, next, color, color == white ? black : white, 0, &alpha, &beta));
-					}
-					else {
-						delete next;
-					}
-				}
+	int p_leading;
+	while (pieces) {
+		p_leading = ilog2(pieces);
+		uint64_t moves = 0;
+		get_moves(p_leading, moves);
+		int m_leading;
+		while (moves) {
+			m_leading = ilog2(moves);
+			Board* next = new Board(this);
+			next->move(1ULL << p_leading, 1ULL << m_leading);
+			if (!next->check(color)) {
+				map.emplace(next, async(reval, next, color, color == white ? black : white, 0, &alpha, &beta));
 			}
+			else {
+				delete next;
+			}
+			moves -= ipow2[m_leading];
 		}
+		pieces -= ipow2[p_leading];
 	}
 	double best = numeric_limits<double>::min();
 	Board* best_board = nullptr;
@@ -689,39 +690,39 @@ double reval(Board* board, color_t og_color, color_t curr_color, int depth, doub
 	if (depth >= EVAL_DEPTH) {
 		return board->evaluate(og_color) / board->evaluate(og_color == white? black: white);
 	}
-	uint64_t selector = 1;
 	uint64_t pieces = 0;
 	bool is_color = curr_color == og_color;
 	double value = is_color ? numeric_limits<double>::min() : numeric_limits<double>::max();
 	curr_color == white ? board->get_white(pieces) : board->get_black(pieces);
-	for (int i = 0; i < 64; i++, selector <<= 1) {
-		if (pieces & selector) {
-			uint64_t moves = 0;
-			uint64_t selector2 = 1;
-			board->get_moves(i, moves);
-			for (int j = 0; j < 64; j++, selector2 <<= 1) {
-				if (selector2 & moves) {
-					Board* next = new Board(board);
-					next->move(selector, selector2);
-					double val = reval(next, og_color, op_color, depth + 1, alpha, beta);
-					delete next;
-					if (is_color) {
-						value = max(val, value);
-						if (value > *beta) {
-							return value;
-						}
-						*alpha = max(*alpha, value);
-					}
-					else {
-						value = min(val, value);
-						if (value < *alpha) {
-							return value;
-						}
-						*beta = min(*beta, value);
-					}
+	int p_leading;
+	while (pieces) {
+		p_leading = ilog2(pieces);
+		uint64_t moves = 0;
+		board->get_moves(p_leading, moves);
+		int m_leading;
+		while (moves) {
+			m_leading = ilog2(moves);
+			Board* next = new Board(board);
+			next->move(1ULL << p_leading, 1ULL << m_leading);
+			double val = reval(next, og_color, op_color, depth + 1, alpha, beta);
+			delete next;
+			if (is_color) {
+				value = max(val, value);
+				if (value > *beta) {
+					return value;
 				}
+				*alpha = max(*alpha, value);
 			}
+			else {
+				value = min(val, value);
+				if (value < *alpha) {
+					return value;
+				}
+				*beta = min(*beta, value);
+			}
+			moves -= ipow2[m_leading];
 		}
+		pieces -= ipow2[p_leading];
 	}
 	return value;
 }

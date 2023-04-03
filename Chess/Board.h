@@ -323,7 +323,7 @@ public:
 	bool check(const color_t& color);
 	bool checkmate(const color_t& color);
 
-	void move(const uint64_t& start, uint64_t& end);
+	void move(const uint64_t& start, const uint64_t& end);
 	double evaluate(color_t color);
 	Board* get_best(color_t color);
 };
