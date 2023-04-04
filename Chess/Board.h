@@ -325,7 +325,7 @@ public:
 	bool checkmate(const color_t& color);
 
 	void move(const uint64_t& start, const uint64_t& end);
-	double evaluate(color_t color);
+	double evaluate(color_t color, bool debug = false);
 	std::pair<uint8_t, uint8_t> get_best(color_t color);
 };
 

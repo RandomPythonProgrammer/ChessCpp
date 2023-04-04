@@ -533,17 +533,17 @@ void Board::move(const uint64_t& start, const uint64_t& dest) {
 					board[pawns] &= ~(dest << 8);
 				}
 			} else if (i == rooks) {
-				if (dest & 0b10000000) {
-					wrrmove = true;
-				} else {
+				if (start & 0b10000000) {
 					wlrmove = true;
+				} else {
+					wrrmove = true;
 				}
 			}
 			else if (i == black + rooks) {
-				if (dest & 9223372036854775808) {
-					brrmove = true;
-				} else {
+				if (start & 9223372036854775808) {
 					blrmove = true;
+				} else {
+					brrmove = true;
 				}
 			}
 			else if (i == kings) {
@@ -589,7 +589,7 @@ void Board::move(const uint64_t& start, const uint64_t& dest) {
 	}
 }
 
-double Board::evaluate(color_t color) {
+double Board::evaluate(color_t color, bool debug) {
 	int min;
 	int max;
 	int value = 0;
@@ -597,6 +597,7 @@ double Board::evaluate(color_t color) {
 	uint64_t center_pawns = 103481868288;
 	uint64_t vision = 0;
 	bool castled;
+	bool cc;
 	attacked_squares(color, vision);
 
 	uint64_t d_pieces = 0;
@@ -608,6 +609,7 @@ double Board::evaluate(color_t color) {
 		min = 0;
 		max = 6;
 		castled = wcasle;
+		cc = !wkmove && (!wrrmove || !wlrmove);
 	}
 	else {
 		get_black(pieces);
@@ -616,18 +618,26 @@ double Board::evaluate(color_t color) {
 		min = 6;
 		max = 12;
 		castled = bcasle;
+		cc = !bkmove && (!brrmove || !blrmove);
 	}
 
 	double development = 0;
 	for (int i = min; i < max; i++) {
 		uint64_t sub = board[i];
-		int val = value_table[i];
-		development += popcount(d_board->board[i] ^ sub) * 1.5/abs(val - 3.5);
+		uint8_t val = value_table[i];
+		uint16_t d = 0;
+		uint64_t developed = (d_board->board[i] ^ sub) & ~d_board->board[i];
+		d += popcount(developed & 35604928818740736) * 0.75;
+		d += popcount(developed & 66229406269440);
+		development += d / abs(6 * (val - 3.25));
 		value += val * popcount(sub);
 	}
 	delete d_board;
 
-	return value + development + popcount(center_pawns) + popcount(vision) * 0.5 + castled;
+	if (debug)
+		printf("Value: %d, Development: %f, Center Pawns: %f, Vision: %f, Castled: %d\n", value, development, popcount(center_pawns) * 0.5, popcount(vision) * 0.05, (cc ? 0 : (castled ? 1 : -2)));
+
+	return value + development + popcount(center_pawns) * 0.5 + popcount(vision) * 0.05 + (cc ? 0 : (castled ? 1 : -2));
 }
 
 pair<uint8_t, uint8_t> Board::get_best(color_t color) {

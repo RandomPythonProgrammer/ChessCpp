@@ -61,12 +61,10 @@ int main() {
 							//color = color == white ? black : white;
 							pair<uint8_t, uint8_t> move = board->get_best(black);
 							(board = new Board(board))->move(1ULL << move.first, 1ULL << move.second);
-							if (board) {
-								printf("White value: %f, Black value: %f\n", board->evaluate(white), board->evaluate(black));
-							}
-							else {
-								cout << "Checkmate" << endl;
-							}
+							double w = board->evaluate(white, true);
+							cout << "%%%%%%%%%%%%%%%%%%" << endl;
+							double b = board->evaluate(black, true);
+							printf("White value: %f, Black value: %f\n", w, b);
 						} else {
 							delete next;
 						}
