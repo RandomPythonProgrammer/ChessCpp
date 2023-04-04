@@ -592,26 +592,46 @@ void Board::move(const uint64_t& start, const uint64_t& dest) {
 double Board::evaluate(color_t color) {
 	int min;
 	int max;
-	double value = 0;
+	int value = 0;
+	Board* d_board = new Board();
+	uint64_t center_pawns = 103481868288;
+	uint64_t vision = 0;
+	bool castled;
+	attacked_squares(color, vision);
+
+	uint64_t d_pieces = 0;
 	uint64_t pieces = 0;
 	if (color == white) {
 		get_white(pieces);
+		d_board->get_white(d_pieces);
+		center_pawns &= board[pawns];
 		min = 0;
 		max = 6;
+		castled = wcasle;
 	}
 	else {
 		get_black(pieces);
+		d_board->get_black(d_pieces);
+		center_pawns &= board[black + pawns];
 		min = 6;
 		max = 12;
+		castled = bcasle;
 	}
+
+	double development = 0;
 	for (int i = min; i < max; i++) {
-		value += value_table[i] * popcount(board[i]);
+		uint64_t sub = board[i];
+		int val = value_table[i];
+		development += popcount(d_board->board[i] ^ sub) * 1.5/abs(val - 3.5);
+		value += val * popcount(sub);
 	}
-	return value;
+	delete d_board;
+
+	return value + development + popcount(center_pawns) + popcount(vision) * 0.5 + castled;
 }
 
-Board* Board::get_best(color_t color) {
-	unordered_map<Board*, future<double>> map;
+pair<uint8_t, uint8_t> Board::get_best(color_t color) {
+	unordered_map<pair<uint8_t, uint8_t>*, future<double>> map;
 	uint64_t pieces = 0;
 	color == white ? get_white(pieces) : get_black(pieces);
 	double alpha = numeric_limits<double>::min();
@@ -627,7 +647,7 @@ Board* Board::get_best(color_t color) {
 			Board* next = new Board(this);
 			next->move(1ULL << p_leading, 1ULL << m_leading);
 			if (!next->check(color)) {
-				map.emplace(next, async(reval, next, color, color == white ? black : white, 0, &alpha, &beta));
+				map.emplace(new pair<uint8_t, uint8_t>(p_leading, m_leading) , async(reval, next, color, color == white ? black : white, 0, &alpha, &beta));
 			}
 			else {
 				delete next;
@@ -637,27 +657,37 @@ Board* Board::get_best(color_t color) {
 		pieces -= 1ULL << p_leading;
 	}
 	double best = numeric_limits<double>::min();
-	Board* best_board = nullptr;
+	pair<uint8_t, uint8_t>* best_move = nullptr;
 
-	for (pair<Board* const, future<double>> &p : map) {
+	for (pair<pair<uint8_t, uint8_t>* const, future<double>> &p : map) {
 		double val = p.second.get();
-		cout << val << endl;
-		if (val >= best) {
+		int sx, sy, ex, ey;
+		sx = 8 - p.first->first % 8;
+		sy = 1 + p.first->first / 8;
+		ex = 8 - p.first->second % 8;
+		ey = 1 + p.first->second / 8;
+
+		printf("(%d, %d) -> (%d, %d): %f\n", sx, sy, ex, ey, val);
+
+		if (!best_move || val >= best) {
 			best = val;
-			delete best_board;
-			best_board = p.first;
+			best_move = p.first;
 		}
 		else {
 			delete p.first;
 		}
 	}
 	cout << "------------" << endl;
-	cout << best << endl;
+	int sx, sy, ex, ey;
+	sx = 8 - best_move->first % 8;
+	sy = 1 + best_move->first / 8;
+	ex = 8 - best_move->second % 8;
+	ey = 1 + best_move->second / 8;
+	printf("(%d, %d) -> (%d, %d): %f\n", sx, sy, ex, ey, best);
 	cout << "******************" << endl;
-	if (best_board == nullptr) {
-		cout << "error getting move" << endl;
-	}
-	return best_board;
+	pair<uint8_t, uint8_t> ret = *best_move;
+	delete best_move;
+	return ret;
 }
 
 double reval(Board* board, color_t og_color, color_t curr_color, int depth, double* alpha, double* beta) {
@@ -685,21 +715,26 @@ double reval(Board* board, color_t og_color, color_t curr_color, int depth, doub
 			m_leading = ilog2(moves);
 			Board* next = new Board(board);
 			next->move(1ULL << p_leading, 1ULL << m_leading);
-			double val = reval(next, og_color, op_color, depth + 1, alpha, beta);
-			delete next;
-			if (is_color) {
-				value = max(val, value);
-				if (value > *beta) {
-					return value;
+			if (!next->check(curr_color)) {
+				double val = reval(next, og_color, op_color, depth + 1, alpha, beta);
+				delete next;
+				if (is_color) {
+					value = max(val, value);
+					if (value > *beta) {
+						return value;
+					}
+					*alpha = max(*alpha, value);
 				}
-				*alpha = max(*alpha, value);
+				else {
+					value = min(val, value);
+					if (value < *alpha) {
+						return value;
+					}
+					*beta = min(*beta, value);
+				}
 			}
 			else {
-				value = min(val, value);
-				if (value < *alpha) {
-					return value;
-				}
-				*beta = min(*beta, value);
+				delete next;
 			}
 			moves -= 1ULL << m_leading;
 		}

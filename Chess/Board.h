@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <utility>
 
 
 enum piece_t { pawns, bishops, knights, rooks, queens, kings };
@@ -325,7 +326,7 @@ public:
 
 	void move(const uint64_t& start, const uint64_t& end);
 	double evaluate(color_t color);
-	Board* get_best(color_t color);
+	std::pair<uint8_t, uint8_t> get_best(color_t color);
 };
 
 double reval(Board* board, color_t og_color, color_t curr_color, int depth, double* alpha, double* beta);

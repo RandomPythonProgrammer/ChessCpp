@@ -59,7 +59,8 @@ int main() {
 							selected = pos;
 							has_selection = false;
 							//color = color == white ? black : white;
-							board = board->get_best(black);
+							pair<uint8_t, uint8_t> move = board->get_best(black);
+							(board = new Board(board))->move(1ULL << move.first, 1ULL << move.second);
 							if (board) {
 								printf("White value: %f, Black value: %f\n", board->evaluate(white), board->evaluate(black));
 							}
