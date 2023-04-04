@@ -41,12 +41,8 @@ Board::Board() {
 Board::Board(Board* previous) {
 	this->previous = previous;
 
-	uint64_t* pboard = previous->board;
-
-	board = new uint64_t[12];
-	for (int i = 0; i < 12; i++) {
-		board[i] = pboard[i];
-	}
+	this->board = new uint64_t[12];
+	memcpy(board, previous->board, 96);
 
 	bcasle = previous->bcasle;
 	wcasle = previous->wcasle;
@@ -338,10 +334,8 @@ void Board::file_attack(const uint8_t& position, uint64_t& mask) {
 	uint64_t o = pos & w ? b : w;
 
 	uint8_t y = position >> 3;
-	uint8_t x = position % 8;
 
 	int y_ = y;
-	int x_ = x;
 
 	//up
 	for (int i = 0; i < 7; i++) {
@@ -365,7 +359,6 @@ void Board::file_attack(const uint8_t& position, uint64_t& mask) {
 	pos = _pos;
 	hit = false;
 	y_ = y;
-	x_ = x;
 
 	//down
 	for (int i = 0; i < 7; i++) {
@@ -432,18 +425,6 @@ void Board::get_moves(const uint8_t& position, uint64_t& mask) {
 	}
 }
 
-void Board::get_observers(const uint8_t& position, uint64_t& mask) {
-	mask = 0;
-	uint64_t pos = 1ULL << position;
-	for (int j = 0; j < 64; j++) {
-		uint64_t moves = 0;
-		get_attacks(j, moves);
-		if (moves & pos) {
-			mask |= 1ULL << j;
-		}
-	}
-}
-
 void Board::get_attackers(const uint8_t& position, uint64_t& mask) {
 	mask = 0;
 	uint64_t b = 0;
@@ -459,7 +440,7 @@ void Board::get_attackers(const uint8_t& position, uint64_t& mask) {
 		uint64_t moves = 0;
 		get_attacks(leading, moves);
 		if (moves & pos) {
-			mask |= 1 << leading;
+			mask |= 1ULL << leading;
 		}
 		o -= ipow2[leading];
 	}
@@ -485,12 +466,12 @@ void Board::attacked_squares(const color_t color, uint64_t& mask) {
 		uint64_t moves = 0;
 		get_attacks(leading, moves);
 		mask |= moves;
-		a -= ipow2[leading];
+		a -= 1ULL << leading;
 	}
 }
 
 bool Board::check(const color_t& color) {
-	uint8_t king_pos = countr_zero(board[kings + (color == white ? 0 : black)]);
+	uint8_t king_pos = ilog2(board[kings + (color == white ? 0 : black)]);
 	uint64_t attackers = 0;
 	get_attackers(king_pos, attackers);
 	return attackers;
@@ -515,9 +496,9 @@ bool Board::checkmate(const color_t& color) {
 				if (!check) {
 					return false;
 				}
-				moves -= ipow2[m_leading];
+				moves -= 1ULL << m_leading;
 			}
-			pieces -= ipow2[p_leading];
+			pieces -= 1ULL << p_leading;
 		}
 		return true;
 	}
@@ -651,9 +632,9 @@ Board* Board::get_best(color_t color) {
 			else {
 				delete next;
 			}
-			moves -= ipow2[m_leading];
+			moves -= 1ULL << m_leading;
 		}
-		pieces -= ipow2[p_leading];
+		pieces -= 1ULL << p_leading;
 	}
 	double best = numeric_limits<double>::min();
 	Board* best_board = nullptr;
@@ -720,9 +701,9 @@ double reval(Board* board, color_t og_color, color_t curr_color, int depth, doub
 				}
 				*beta = min(*beta, value);
 			}
-			moves -= ipow2[m_leading];
+			moves -= 1ULL << m_leading;
 		}
-		pieces -= ipow2[p_leading];
+		pieces -= 1ULL << p_leading;
 	}
 	return value;
 }
