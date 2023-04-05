@@ -8,8 +8,10 @@
 using namespace std;
 using namespace sf;
 
-int main() {
-	color_t color = white;
+int main1() {
+	char c;
+	cin >> c;
+	color_t color = c == 'w'? white: black;
 	int piece_size = 45;
 	int board_size = piece_size * 8;
 	RenderWindow window(VideoMode(board_size, board_size), "chess");
@@ -18,6 +20,16 @@ int main() {
 		load_texture("bp.png"), load_texture("bb.png"), load_texture("bn.png"), load_texture("br.png"), load_texture("bq.png"), load_texture("bk.png")
 	};
 	Board* board = new Board();
+
+	//bot goes first
+	if (color == black) {
+		pair<uint8_t, uint8_t> move = board->get_best(color == white ? black : white);
+		(board = new Board(board))->move(1ULL << move.first, 1ULL << move.second);
+		double w = board->evaluate(white, true);
+		cout << "%%%%%%%%%%%%%%%%%%" << endl;
+		double b = board->evaluate(black, true);
+		printf("White value: %f, Black value: %f\n", w, b);
+	}
 
 	RectangleShape square(Vector2f(piece_size, piece_size));
 	square.setFillColor(Color::Green);
@@ -59,7 +71,7 @@ int main() {
 							selected = pos;
 							has_selection = false;
 							//color = color == white ? black : white;
-							pair<uint8_t, uint8_t> move = board->get_best(black);
+							pair<uint8_t, uint8_t> move = board->get_best(color == white? black: white);
 							(board = new Board(board))->move(1ULL << move.first, 1ULL << move.second);
 							double w = board->evaluate(white, true);
 							cout << "%%%%%%%%%%%%%%%%%%" << endl;

@@ -6,7 +6,7 @@
 
 using namespace std;
 
-const int EVAL_DEPTH = 5;
+const int EVAL_DEPTH = 2;
 
 Board::Board() {
 	previous = nullptr;
@@ -629,7 +629,7 @@ double Board::evaluate(color_t color, bool debug) {
 		uint64_t developed = (d_board->board[i] ^ sub) & ~d_board->board[i];
 		d += popcount(developed & 35604928818740736) * 0.75;
 		d += popcount(developed & 66229406269440);
-		development += d / abs(6 * (val - 3.25));
+		development += d / abs(4 * (val - 3.5));
 		value += val * popcount(sub);
 	}
 	delete d_board;
@@ -702,14 +702,15 @@ pair<uint8_t, uint8_t> Board::get_best(color_t color) {
 
 double reval(Board* board, color_t og_color, color_t curr_color, int depth, double* alpha, double* beta) {
 	color_t op_color = curr_color == white ? black : white;
+	color_t oop_color = og_color == white ? black : white;
 	if (board->checkmate(og_color)) {
 		return numeric_limits<double>::min();
 	}
-	if (board->checkmate(op_color)) {
+	if (board->checkmate(oop_color)) {
 		return numeric_limits<double>::max();
 	}
 	if (depth >= EVAL_DEPTH) {
-		return board->evaluate(og_color) / board->evaluate(og_color == white? black: white);
+		return board->evaluate(og_color) / board->evaluate(oop_color);
 	}
 	uint64_t pieces = 0;
 	bool is_color = curr_color == og_color;
