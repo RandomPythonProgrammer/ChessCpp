@@ -479,28 +479,14 @@ bool Board::check(const color_t& color) {
 
 bool Board::checkmate(const color_t& color) {
 	if (check(color)) {
-		uint64_t pieces = 0;
-		color == white ? get_white(pieces) : get_black(pieces);
-		int p_leading;
-		while (pieces) {
-			p_leading = ilog2(pieces);
-			uint64_t moves = 0;
-			get_moves(p_leading, moves);
-			int m_leading;
-			while (moves) {
-				m_leading = ilog2(moves);
-				Board* next = new Board(this);
-				next->move(1ULL << p_leading, 1ULL << m_leading);
-				bool check = next->check(color);
-				delete next;
-				if (!check) {
-					return false;
-				}
-				moves -= 1ULL << m_leading;
+		vector<Board*> moves = get_moves(color);
+		for (Board* move : moves) {
+			bool check = move->check(color);
+			delete move;
+			if (!check) {
+				return false;
 			}
-			pieces -= 1ULL << p_leading;
 		}
-		return true;
 	}
 	return false;
 }
@@ -589,6 +575,34 @@ void Board::move(const uint64_t& start, const uint64_t& dest) {
 	}
 }
 
+vector<Board*> Board::get_moves(const color_t& color) {
+	//gets all moves and return them as an array;
+	std::vector<Board*> move_vec;
+	uint64_t pieces = 0;
+	color == white ? get_white(pieces): get_black(pieces);
+	int p_leading;
+	while (pieces) {
+		p_leading = ilog2(pieces);
+		uint64_t moves = 0;
+		get_moves(p_leading, moves);
+		int m_leading;
+		while (moves) {
+			m_leading = ilog2(moves);
+			Board* next = new Board(this);
+			next->move(1ULL << p_leading, 1ULL << m_leading);
+			if (!next->check(color)) {
+				move_vec.push_back(next);
+			}
+			else {
+				delete next;
+			}
+			moves -= 1ULL << m_leading;
+		}
+		pieces -= 1ULL << p_leading;
+	}
+	return move_vec;
+}
+
 double Board::evaluate(color_t color, bool debug) {
 	int min;
 	int max;
@@ -640,116 +654,67 @@ double Board::evaluate(color_t color, bool debug) {
 	return value + development + popcount(center_pawns) * 0.5 + popcount(vision) * 0.05 + (cc ? 0 : (castled ? 1 : -2));
 }
 
-pair<uint8_t, uint8_t> Board::get_best(color_t color) {
-	unordered_map<pair<uint8_t, uint8_t>*, future<double>> map;
-	uint64_t pieces = 0;
-	color == white ? get_white(pieces) : get_black(pieces);
+pair<Board*, double> Board::get_best(color_t color) {
 	double alpha = numeric_limits<double>::min();
 	double beta = numeric_limits<double>::max();
-	int p_leading;
-	while (pieces) {
-		p_leading = ilog2(pieces);
-		uint64_t moves = 0;
-		get_moves(p_leading, moves);
-		int m_leading;
-		while (moves) {
-			m_leading = ilog2(moves);
-			Board* next = new Board(this);
-			next->move(1ULL << p_leading, 1ULL << m_leading);
-			if (!next->check(color)) {
-				map.emplace(new pair<uint8_t, uint8_t>(p_leading, m_leading) , async(reval, next, color, color == white ? black : white, 0, &alpha, &beta));
-			}
-			else {
-				delete next;
-			}
-			moves -= 1ULL << m_leading;
-		}
-		pieces -= 1ULL << p_leading;
-	}
-	double best = numeric_limits<double>::min();
-	pair<uint8_t, uint8_t>* best_move = nullptr;
-
-	for (pair<pair<uint8_t, uint8_t>* const, future<double>> &p : map) {
-		double val = p.second.get();
-		int sx, sy, ex, ey;
-		sx = 8 - p.first->first % 8;
-		sy = 1 + p.first->first / 8;
-		ex = 8 - p.first->second % 8;
-		ey = 1 + p.first->second / 8;
-
-		printf("(%d, %d) -> (%d, %d): %f\n", sx, sy, ex, ey, val);
-
-		if (!best_move || val >= best) {
-			best = val;
-			best_move = p.first;
-		}
-		else {
-			delete p.first;
-		}
-	}
-	cout << "------------" << endl;
-	int sx, sy, ex, ey;
-	sx = 8 - best_move->first % 8;
-	sy = 1 + best_move->first / 8;
-	ex = 8 - best_move->second % 8;
-	ey = 1 + best_move->second / 8;
-	printf("(%d, %d) -> (%d, %d): %f\n", sx, sy, ex, ey, best);
-	cout << "******************" << endl;
-	pair<uint8_t, uint8_t> ret = *best_move;
-	delete best_move;
-	return ret;
+	return reval(this, color, color, 0, &alpha, &beta);
 }
 
-double reval(Board* board, color_t og_color, color_t curr_color, int depth, double* alpha, double* beta) {
-	color_t op_color = curr_color == white ? black : white;
-	color_t oop_color = og_color == white ? black : white;
-	if (board->checkmate(og_color)) {
-		return numeric_limits<double>::min();
-	}
-	if (board->checkmate(oop_color)) {
-		return numeric_limits<double>::max();
-	}
+pair<Board*, double> reval(Board* board, color_t og_color, color_t curr_color, int depth, double* alpha, double* beta) {
+	color_t opog_color = og_color == white ? black : white;
+	color_t op_color = curr_color == white ? black : black;
+	bool is_color = og_color == curr_color;
+
+	pair<Board*, double> eval;
+	eval.second = is_color ? numeric_limits<double>::min() : numeric_limits<double>::max();
+
 	if (depth >= EVAL_DEPTH) {
-		return board->evaluate(og_color) / board->evaluate(oop_color);
+		return pair(board, board->evaluate(og_color) / board->evaluate(opog_color));
 	}
-	uint64_t pieces = 0;
-	bool is_color = curr_color == og_color;
-	double value = is_color ? numeric_limits<double>::min() : numeric_limits<double>::max();
-	curr_color == white ? board->get_white(pieces) : board->get_black(pieces);
-	int p_leading;
-	while (pieces) {
-		p_leading = ilog2(pieces);
-		uint64_t moves = 0;
-		board->get_moves(p_leading, moves);
-		int m_leading;
-		while (moves) {
-			m_leading = ilog2(moves);
-			Board* next = new Board(board);
-			next->move(1ULL << p_leading, 1ULL << m_leading);
-			if (!next->check(curr_color)) {
-				double val = reval(next, og_color, op_color, depth + 1, alpha, beta);
-				delete next;
-				if (is_color) {
-					value = max(val, value);
-					if (value > *beta) {
-						return value;
-					}
-					*alpha = max(*alpha, value);
-				}
-				else {
-					value = min(val, value);
-					if (value < *alpha) {
-						return value;
-					}
-					*beta = min(*beta, value);
-				}
+	if (board->checkmate(og_color)) {
+		return pair(board, numeric_limits<double>::min());
+	}
+	if (board->checkmate(opog_color)) {
+		return pair(board, numeric_limits<double>::max());
+	}
+
+	vector<Board*> moves = board->get_moves(curr_color);
+
+	for (Board* move : moves) {
+		pair<Board*, double> result = reval(move, og_color, op_color, depth + 1, alpha, beta);
+		if (is_color) {
+			if (result.second > eval.second) {
+				eval.first = move;
+				eval.second = result.second;
 			}
-			else {
-				delete next;
+			if (result.second > *beta) {
+				goto e;
 			}
-			moves -= 1ULL << m_leading;
+			*alpha = max(eval.second, *alpha);
 		}
-		pieces -= 1ULL << p_leading;
+		else {
+			if (result.second < eval.second) {
+				eval.first = move;
+				eval.second = result.second;
+			}
+			if (result.second < *alpha) {
+				goto e;
+			}
+			*beta = min(eval.second, *beta);
+		}
 	}
-	return value;
+
+	for (Board* move : moves) {
+		if (move != eval.first) {
+			delete move;
+		}
+	}
+
+e:;
+	for (Board* move : moves) {
+		if (move != eval.first) {
+			delete move;
+		}
+	}
+	return eval;
 }

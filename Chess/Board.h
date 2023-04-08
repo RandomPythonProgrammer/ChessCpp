@@ -1,7 +1,9 @@
 #pragma once
 #include <stdint.h>
 #include <utility>
+#include <vector>
 
+using namespace std;
 
 enum piece_t { pawns, bishops, knights, rooks, queens, kings };
 
@@ -318,15 +320,16 @@ public:
 
 	void get_moves(const uint8_t& position, uint64_t& mask);
 	void get_attacks(const uint8_t& position, uint64_t& mask);
-	void get_observers(const uint8_t& position, uint64_t& mask);
 	void get_attackers(const uint8_t& position, uint64_t& mask);
 	void attacked_squares(const color_t color, uint64_t& mask);
 	bool check(const color_t& color);
 	bool checkmate(const color_t& color);
 
+	vector<Board*> get_moves(const color_t& color);
+
 	void move(const uint64_t& start, const uint64_t& end);
 	double evaluate(color_t color, bool debug = false);
-	std::pair<uint8_t, uint8_t> get_best(color_t color);
+	pair<Board*, double> get_best(color_t color);
 };
 
-double reval(Board* board, color_t og_color, color_t curr_color, int depth, double* alpha, double* beta);
+pair<Board*, double> reval(Board* board, color_t og_color, color_t curr_color, int depth, double* alpha, double* beta);

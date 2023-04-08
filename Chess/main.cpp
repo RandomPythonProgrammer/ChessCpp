@@ -8,7 +8,7 @@
 using namespace std;
 using namespace sf;
 
-int main1() {
+int main() {
 	char c;
 	cin >> c;
 	color_t color = c == 'w'? white: black;
@@ -23,8 +23,7 @@ int main1() {
 
 	//bot goes first
 	if (color == black) {
-		pair<uint8_t, uint8_t> move = board->get_best(color == white ? black : white);
-		(board = new Board(board))->move(1ULL << move.first, 1ULL << move.second);
+		board = board->get_best(color == white ? black : white).first;
 		double w = board->evaluate(white, true);
 		cout << "%%%%%%%%%%%%%%%%%%" << endl;
 		double b = board->evaluate(black, true);
@@ -71,8 +70,7 @@ int main1() {
 							selected = pos;
 							has_selection = false;
 							//color = color == white ? black : white;
-							pair<uint8_t, uint8_t> move = board->get_best(color == white? black: white);
-							(board = new Board(board))->move(1ULL << move.first, 1ULL << move.second);
+							board = board->get_best(color == white? black: white).first;
 							double w = board->evaluate(white, true);
 							cout << "%%%%%%%%%%%%%%%%%%" << endl;
 							double b = board->evaluate(black, true);
