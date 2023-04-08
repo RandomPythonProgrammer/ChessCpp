@@ -3,6 +3,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <future>
+#include "test.h"
 
 using namespace std;
 
@@ -654,34 +655,40 @@ double Board::evaluate(color_t color, bool debug) {
 	return value + development + popcount(center_pawns) * 0.5 + popcount(vision) * 0.05 + (cc ? 0 : (castled ? 1 : -2));
 }
 
-pair<Board*, double> Board::get_best(color_t color) {
+pair<Board*, double> Board::get_best(const color_t& color, const bool& show) {
 	double alpha = numeric_limits<double>::min();
 	double beta = numeric_limits<double>::max();
-	return reval(this, color, color, 0, &alpha, &beta);
+	return reval(this, color, color, 0, &alpha, &beta, show);
 }
 
-pair<Board*, double> reval(Board* board, color_t og_color, color_t curr_color, int depth, double* alpha, double* beta) {
+pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t& curr_color, const int& depth, double* alpha, double* beta, const bool& show) {
 	color_t opog_color = og_color == white ? black : white;
-	color_t op_color = curr_color == white ? black : black;
+	color_t op_color = curr_color == white ? black : white;
 	bool is_color = og_color == curr_color;
 
 	pair<Board*, double> eval;
 	eval.second = is_color ? numeric_limits<double>::min() : numeric_limits<double>::max();
 
-	if (depth >= EVAL_DEPTH) {
-		return pair(board, board->evaluate(og_color) / board->evaluate(opog_color));
-	}
-	if (board->checkmate(og_color)) {
-		return pair(board, numeric_limits<double>::min());
-	}
 	if (board->checkmate(opog_color)) {
 		return pair(board, numeric_limits<double>::max());
 	}
 
 	vector<Board*> moves = board->get_moves(curr_color);
+	if (!moves.size()) {
+		return pair(board, numeric_limits<double>::min());
+	}
+
+	if (depth >= EVAL_DEPTH) {
+		return pair(board, board->evaluate(og_color) / board->evaluate(opog_color));
+	}
 
 	for (Board* move : moves) {
+		//visualize the board and the value associated with it
+		if (show) {
+			render_board(move, move->evaluate(og_color) / move->evaluate(opog_color));
+		}
 		pair<Board*, double> result = reval(move, og_color, op_color, depth + 1, alpha, beta);
+
 		if (is_color) {
 			if (result.second > eval.second) {
 				eval.first = move;
@@ -701,12 +708,6 @@ pair<Board*, double> reval(Board* board, color_t og_color, color_t curr_color, i
 				goto e;
 			}
 			*beta = min(eval.second, *beta);
-		}
-	}
-
-	for (Board* move : moves) {
-		if (move != eval.first) {
-			delete move;
 		}
 	}
 

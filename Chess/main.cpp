@@ -70,11 +70,18 @@ int main() {
 							selected = pos;
 							has_selection = false;
 							//color = color == white ? black : white;
-							board = board->get_best(color == white? black: white).first;
+							board = board->get_best(color == white? black: white, Keyboard::isKeyPressed(Keyboard::LShift)).first;
 							double w = board->evaluate(white, true);
-							cout << "%%%%%%%%%%%%%%%%%%" << endl;
+							cout << "-------------------" << endl;
 							double b = board->evaluate(black, true);
 							printf("White value: %f, Black value: %f\n", w, b);
+							if (board->checkmate(white)) {
+								cout << "white checkmate" << endl;
+							}
+							if (board->checkmate(black)) {
+								cout << "black checkmate" << endl;
+							}
+							cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
 						} else {
 							delete next;
 						}
