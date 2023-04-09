@@ -4,7 +4,6 @@
 #include "test.h"
 #include <ppl.h>
 #include <concurrent_unordered_map.h>
-#include <unordered_map>
 
 using namespace std;
 
@@ -680,8 +679,6 @@ pair<Board*, double> Board::get_best(const color_t& color, const bool& show) {
 		}
 	}
 		
-
-e:;
 	for (Board* move : moves) {
 		if (move != eval.first) {
 			delete move;
