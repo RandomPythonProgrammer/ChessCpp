@@ -488,6 +488,22 @@ bool Board::checkmate(const color_t& color) {
 				return false;
 			}
 		}
+		return true;
+	}
+	return false;
+}
+
+bool Board::stalemate(const color_t& color) {
+	if (!check(color)) {
+		vector<Board*> moves = get_moves(color);
+		for (Board* move : moves) {
+			bool check = move->check(color);
+			delete move;
+			if (!check) {
+				return false;
+			}
+		}
+		return true;
 	}
 	return false;
 }
@@ -613,27 +629,35 @@ double Board::evaluate(color_t color, bool debug) {
 	uint64_t vision = 0;
 	bool castled;
 	bool cc;
+	int target;
+	//double trade = 0; //add the calculation of trades
 	attacked_squares(color, vision);
 
 	uint64_t d_pieces = 0;
 	uint64_t pieces = 0;
+	uint64_t p;
+
 	if (color == white) {
 		get_white(pieces);
 		d_board->get_white(d_pieces);
-		center_pawns &= board[pawns];
+		p = board[pawns];
+		center_pawns &= p;
 		min = 0;
 		max = 6;
 		castled = wcasle;
 		cc = !wkmove && (!wrrmove || !wlrmove);
+		target = 7;
 	}
 	else {
 		get_black(pieces);
 		d_board->get_black(d_pieces);
-		center_pawns &= board[black + pawns];
+		p = board[black + pawns];
+		center_pawns &= p;
 		min = 6;
 		max = 12;
 		castled = bcasle;
 		cc = !bkmove && (!brrmove || !blrmove);
+		target = 0;
 	}
 
 	double development = 0;
@@ -649,10 +673,17 @@ double Board::evaluate(color_t color, bool debug) {
 	}
 	delete d_board;
 
+	int leading;
+	while (p) {
+		leading = ilog2(p);
+		development += 2.5 / abs(target - leading + 0.1);
+		p -= 1ULL << leading;
+	}
+
 	if (debug)
 		printf("Value: %d, Development: %f, Center Pawns: %f, Vision: %f, Castled: %d\n", value, development, popcount(center_pawns) * 0.5, popcount(vision) * 0.05, (cc ? 0 : (castled ? 1 : -2)));
 
-	return value + development + popcount(center_pawns) * 0.5 + popcount(vision) * 0.05 + (cc ? 0 : (castled ? 1 : -2));
+	return value + development + popcount(center_pawns) * 0.5 + popcount(vision) * 0.05 + (cc ? 0 : (castled ? 1 : -1));
 }
 
 pair<Board*, double> Board::get_best(const color_t& color, const bool& show) {
@@ -695,15 +726,18 @@ pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t&
 	pair<Board*, double> eval;
 	eval.second = is_color ? numeric_limits<double>::min() : numeric_limits<double>::max();
 
+	if (board->stalemate(white) || board->stalemate(black)) {
+		return pair(board, numeric_limits<double>::min() + 1);
+	}
+
 	if (board->checkmate(opog_color)) {
 		return pair(board, numeric_limits<double>::max());
 	}
+	if (board->checkmate(og_color)) {
+		return pair(board, numeric_limits<double>::min());
+	}
 
 	vector<Board*> moves = board->get_moves(curr_color);
-	if (!moves.size()) {
-		eval = pair(board, numeric_limits<double>::min());
-		goto e;
-	}
 
 	if (depth >= EVAL_DEPTH) {
 		eval = pair(board, board->evaluate(og_color) / board->evaluate(opog_color));

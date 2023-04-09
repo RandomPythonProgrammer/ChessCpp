@@ -324,6 +324,7 @@ public:
 	void attacked_squares(const color_t color, uint64_t& mask);
 	bool check(const color_t& color);
 	bool checkmate(const color_t& color);
+	bool stalemate(const color_t& color);
 
 	vector<Board*> get_moves(const color_t& color);
 
