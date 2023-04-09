@@ -460,7 +460,6 @@ void Board::get_attacks(const uint8_t& position, uint64_t& mask) {
 void Board::attacked_squares(const color_t color, uint64_t& mask) {
 	uint64_t a;
 	color == white ? get_white(a) : get_black(a);
-	uint64_t selector = 0;
 	int leading;
 	while (a) {
 		leading = ilog2(a);
