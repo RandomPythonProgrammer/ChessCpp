@@ -49,6 +49,12 @@ int main() {
 				window.close();
 			}
 
+			if (event.type == Event::KeyPressed) {
+				if (event.key.code == Keyboard::Z && board->previous->previous) {
+					board = board->previous->previous;
+				}
+			}
+
 			if (event.type == Event::MouseButtonPressed) {
 				Vector2i position = Mouse::getPosition(window);
 				int x = (board_size - position.x) / piece_size;
@@ -71,6 +77,7 @@ int main() {
 							has_selection = false;
 							//color = color == white ? black : white;
 							board = board->get_best(color == white? black: white, Keyboard::isKeyPressed(Keyboard::LShift)).first;
+							printf("has castled: %d, King moved: %d, rr moved: %d, lr moved: %d\n", board->wcasle, board->wkmove, board->wrrmove, board->wlrmove);
 							double w = board->evaluate(white, true);
 							cout << "-------------------" << endl;
 							double b = board->evaluate(black, true);
