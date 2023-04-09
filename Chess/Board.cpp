@@ -1,13 +1,14 @@
 #include "board.h"
 #include "util.h"
 #include <iostream>
-#include <unordered_map>
-#include <future>
 #include "test.h"
+#include <ppl.h>
+#include <concurrent_unordered_map.h>
+#include <unordered_map>
 
 using namespace std;
 
-const int EVAL_DEPTH = 2;
+const int EVAL_DEPTH = 4;
 
 Board::Board() {
 	previous = nullptr;
@@ -658,10 +659,38 @@ double Board::evaluate(color_t color, bool debug) {
 pair<Board*, double> Board::get_best(const color_t& color, const bool& show) {
 	double alpha = numeric_limits<double>::min();
 	double beta = numeric_limits<double>::max();
-	return reval(this, color, color, 0, &alpha, &beta, show);
+
+	color_t ocolor = color == white ? black : white;
+	pair<Board*, double> eval;
+	eval.second = numeric_limits<double>::min();
+
+	vector<Board*> moves = get_moves(color);
+	concurrency::concurrent_unordered_map<Board*, pair<Board*, double>> results;
+
+	concurrency::parallel_for_each(moves.begin(), moves.end(), [&](Board* move) {
+		results[move] = reval(move, color, ocolor, 1, alpha, beta, show);
+	});
+
+
+	for (const pair<Board*, pair<Board*, double>> &item : results) {
+		pair<Board*, double> result = item.second;
+		if (result.second > eval.second) {
+			eval.first = item.first;
+			eval.second = result.second;
+		}
+	}
+		
+
+e:;
+	for (Board* move : moves) {
+		if (move != eval.first) {
+			delete move;
+		}
+	}
+	return eval;
 }
 
-pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t& curr_color, const int& depth, double* alpha, double* beta, const bool& show) {
+pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t& curr_color, const int& depth, double alpha, double beta, const bool& show) {
 	color_t opog_color = og_color == white ? black : white;
 	color_t op_color = curr_color == white ? black : white;
 	bool is_color = og_color == curr_color;
@@ -675,39 +704,55 @@ pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t&
 
 	vector<Board*> moves = board->get_moves(curr_color);
 	if (!moves.size()) {
-		return pair(board, numeric_limits<double>::min());
+		eval = pair(board, numeric_limits<double>::min());
+		goto e;
 	}
 
 	if (depth >= EVAL_DEPTH) {
-		return pair(board, board->evaluate(og_color) / board->evaluate(opog_color));
+		eval = pair(board, board->evaluate(og_color) / board->evaluate(opog_color));
+		goto e;
 	}
 
 	for (Board* move : moves) {
 		//visualize the board and the value associated with it
 		if (show) {
+
+			//Show color move
+			if (curr_color == white) {
+				cout << "white turn to move" << endl;
+			}
+			else {
+				cout << "black turn to move" << endl;
+			}
+			cout << "Depth: " << depth << endl;
+			cout << "Moves: " << moves.size() << endl;
+			cout << "EEEEEEEEEEEEEEEEEEEEE" << endl;
+
 			render_board(move, move->evaluate(og_color) / move->evaluate(opog_color));
+			system("cls");
+
 		}
-		pair<Board*, double> result = reval(move, og_color, op_color, depth + 1, alpha, beta);
+		pair<Board*, double> result = reval(move, og_color, op_color, depth + 1, alpha, beta, show);
 
 		if (is_color) {
 			if (result.second > eval.second) {
 				eval.first = move;
 				eval.second = result.second;
 			}
-			if (result.second > *beta) {
+			if (eval.second > beta) {
 				goto e;
 			}
-			*alpha = max(eval.second, *alpha);
+			alpha = max(eval.second, alpha);
 		}
 		else {
 			if (result.second < eval.second) {
 				eval.first = move;
 				eval.second = result.second;
 			}
-			if (result.second < *alpha) {
+			if (eval.second < alpha) {
 				goto e;
 			}
-			*beta = min(eval.second, *beta);
+			beta = min(eval.second, beta);
 		}
 	}
 

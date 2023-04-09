@@ -332,4 +332,4 @@ public:
 	pair<Board*, double> get_best(const color_t& color, const bool& show = false);
 };
 
-pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t& curr_color, const int& depth, double* alpha, double* beta, const bool& show = false);
+pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t& curr_color, const int& depth, double alpha, double beta, const bool& show = false);
