@@ -51,7 +51,15 @@ int main() {
 
 			if (event.type == Event::KeyPressed) {
 				if (event.key.code == Keyboard::Z && board->previous->previous) {
-					board = board->previous->previous;
+					Board* prev = board->previous;
+					Board* prevprev = prev->previous;
+					delete board;
+					delete prev;
+					board = prevprev;
+				}
+				if (event.key.code == Keyboard::R) {
+					delete board;
+					board = new Board();
 				}
 			}
 
