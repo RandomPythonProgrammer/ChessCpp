@@ -321,7 +321,7 @@ public:
 	void get_moves(const uint8_t& position, uint64_t& mask);
 	void get_attacks(const uint8_t& position, uint64_t& mask);
 	void get_attackers(const uint8_t& position, uint64_t& mask);
-	void attacked_squares(const color_t color, uint64_t& mask);
+	void attacked_squares(const color_t& color, uint64_t& mask);
 	bool check(const color_t& color);
 	bool checkmate(const color_t& color);
 	bool stalemate(const color_t& color);

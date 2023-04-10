@@ -102,7 +102,7 @@ void Board::king_attack(const uint8_t& position, uint64_t& mask) {
 	get_white(w);
 	get_black(b);
 	uint64_t c;
-	uint64_t attacks;
+	uint64_t attacks = 0;
 	uint64_t a = w | b;
 
 	if (1ULL << position & w) {
@@ -449,7 +449,7 @@ void Board::get_attackers(const uint8_t& position, uint64_t& mask) {
 
 void Board::get_attacks(const uint8_t& position, uint64_t& mask) {
 	uint64_t pos = 1ULL << position;
-	if (pos & board[kings] || pos & board[black + kings]) {
+	if ((pos & board[kings]) || (pos & board[black + kings])) {
 		mask |= king_table[position];
 	}
 	else {
@@ -457,8 +457,8 @@ void Board::get_attacks(const uint8_t& position, uint64_t& mask) {
 	}
 }
 
-void Board::attacked_squares(const color_t color, uint64_t& mask) {
-	uint64_t a;
+void Board::attacked_squares(const color_t& color, uint64_t& mask) {
+	uint64_t a = 0;
 	color == white ? get_white(a) : get_black(a);
 	int leading;
 	while (a) {
