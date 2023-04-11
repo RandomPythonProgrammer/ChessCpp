@@ -499,6 +499,24 @@ bool Board::checkmate(const color_t& color) {
 }
 
 bool Board::stalemate(const color_t& color) {
+	unordered_map<Board*, int> moves;
+	Board* curr = this;
+	do {
+		for (pair<Board* const, int>& entry : moves) {
+			for (int i = 0; i < 12; i++) {
+				if (entry.first->board[i] != curr->board[i]) {
+					moves[curr] = 1;
+					break;
+				}
+				entry.second++;
+				if (entry.second >= 3) {
+					return true;
+				}
+			}
+		}
+		curr = curr->previous;
+	} while (curr->previous);
+
 	if (!check(color)) {
 		vector<Board*> moves = get_moves(color);
 		for (Board* move : moves) {
