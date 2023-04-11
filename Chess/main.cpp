@@ -95,6 +95,8 @@ int main() {
 							}
 							if (board->checkmate(black)) {
 								cout << "black checkmate" << endl;
+							} if (board->stalemate()) {
+								cout << "stalemate" << endl;
 							}
 							cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
 						} else {

@@ -325,6 +325,7 @@ public:
 	bool check(const color_t& color);
 	bool checkmate(const color_t& color);
 	bool stalemate(const color_t& color);
+	bool stalemate();
 
 	vector<Board*> get_moves(const color_t& color);
 

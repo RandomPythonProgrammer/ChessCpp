@@ -499,6 +499,21 @@ bool Board::checkmate(const color_t& color) {
 }
 
 bool Board::stalemate(const color_t& color) {
+	if (!check(color)) {
+		vector<Board*> moves = get_moves(color);
+		for (Board* move : moves) {
+			bool check = move->check(color);
+			delete move;
+			if (!check) {
+				return false;
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
+bool Board::stalemate() {
 	unordered_map<Board*, int> moves;
 	Board* curr = this;
 	do {
@@ -516,19 +531,7 @@ bool Board::stalemate(const color_t& color) {
 		}
 		curr = curr->previous;
 	} while (curr->previous);
-
-	if (!check(color)) {
-		vector<Board*> moves = get_moves(color);
-		for (Board* move : moves) {
-			bool check = move->check(color);
-			delete move;
-			if (!check) {
-				return false;
-			}
-		}
-		return true;
-	}
-	return false;
+	return stalemate(white) || stalemate(black);
 }
 
 void Board::move(const uint64_t& start, const uint64_t& dest) {
@@ -759,7 +762,7 @@ pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t&
 	pair<Board*, double> eval;
 	eval.second = is_color ? numeric_limits<double>::min() : numeric_limits<double>::max();
 
-	if (board->stalemate(white) || board->stalemate(black)) {
+	if (board->stalemate()) {
 		return pair(board, numeric_limits<double>::min() + 1);
 	}
 
