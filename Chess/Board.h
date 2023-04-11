@@ -7,9 +7,9 @@ using namespace std;
 
 enum piece_t { pawns, bishops, knights, rooks, queens, kings };
 
-const uint8_t value_table[] = {
-	1, 3, 3, 5, 9, 0,
-	1, 3, 3, 5, 9, 0
+const double value_table[] = {
+	1, 3.15, 3, 5, 9, 0,
+	1, 3.15, 3, 5, 9, 0
 };
 
 enum color_t { white = 0, black = 6 };

@@ -154,7 +154,7 @@ void Board::pawn_attack(const uint8_t& position, uint64_t& mask) {
 		//en passant white
 		if (m & 1095216660480 && previous) {
 			uint8_t epawns = board[black + pawns] >> y;
-			epawns &= (uint8_t) ((previous->board[black + pawns] >> y) >> 16);
+			epawns &= (uint8_t) (((previous->board[black + pawns] & ~board[black + pawns]) >> y) >> 16);
 			mask |= (((uint64_t) epawns) << y) << 8;
 		}
 
@@ -167,7 +167,7 @@ void Board::pawn_attack(const uint8_t& position, uint64_t& mask) {
 		//en passant black
 		if (m & 4278190080 && previous) {
 			uint8_t epawns = board[pawns] >> y;
-			epawns &= (uint8_t)((previous->board[pawns] << 16) >> y);
+			epawns &= (uint8_t)(((previous->board[pawns] & ~ board[pawns]) << 16) >> y);
 			mask |= (((uint64_t)epawns) << y) >> 8;
 		}
 
@@ -452,6 +452,12 @@ void Board::get_attacks(const uint8_t& position, uint64_t& mask) {
 	if ((pos & board[kings]) || (pos & board[black + kings])) {
 		mask |= king_table[position];
 	}
+	else if (pos & board[pawns]) {
+		mask |= wpc_table[position];
+	}
+	else if (pos & board[black + pawns]) {
+		mask |= bpc_table[position];
+	}
 	else {
 		get_moves(position, mask);
 	}
@@ -665,8 +671,8 @@ double Board::evaluate(color_t color, bool debug) {
 		uint8_t val = value_table[i];
 		uint16_t d = 0;
 		uint64_t developed = (d_board->board[i] ^ sub) & ~d_board->board[i];
-		d += popcount(developed & 35604928818740736) * 0.75;
-		d += popcount(developed & 66229406269440);
+		d += popcount(developed & 35604928818740736) * 0.25;
+		d += popcount(developed & 66229406269440) * 0.50;
 		development += d / abs(4 * (val - 3.5));
 		value += val * popcount(sub);
 	}
@@ -675,14 +681,14 @@ double Board::evaluate(color_t color, bool debug) {
 	int leading;
 	while (p) {
 		leading = ilog2(p);
-		development += 2.5 / abs(target - leading + 0.1);
+		development += 1.75 / abs(target - (leading >> 3) + 0.1);
 		p -= 1ULL << leading;
 	}
 
 	if (debug)
 		printf("Value: %d, Development: %f, Center Pawns: %f, Vision: %f, Castled: %d\n", value, development, popcount(center_pawns) * 0.5, popcount(vision) * 0.05, (cc ? 0 : (castled ? 1 : -2)));
 
-	return value + development + popcount(center_pawns) * 0.5 + popcount(vision) * 0.05 + (cc ? 0 : (castled ? 1 : -1));
+	return value + development + popcount(center_pawns) * 0.75 + popcount(vision) * 0.1 + (cc ? 0 : (castled ? 0.5 : -0.5));
 }
 
 pair<Board*, double> Board::get_best(const color_t& color, const bool& show) {
