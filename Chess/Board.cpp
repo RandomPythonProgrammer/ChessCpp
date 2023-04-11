@@ -153,7 +153,7 @@ void Board::pawn_attack(const uint8_t& position, uint64_t& mask) {
 	if (m & w) {
 		//en passant white
 		if (m & 1095216660480 && previous) {
-			uint8_t epawns = board[black + pawns] >> y;
+			uint8_t epawns = board[black + pawns] >> y & (m << 1 | m >> 1);
 			epawns &= (uint8_t) (((previous->board[black + pawns] & ~board[black + pawns]) >> y) >> 16);
 			mask |= (((uint64_t) epawns) << y) << 8;
 		}
@@ -166,7 +166,7 @@ void Board::pawn_attack(const uint8_t& position, uint64_t& mask) {
 	else {
 		//en passant black
 		if (m & 4278190080 && previous) {
-			uint8_t epawns = board[pawns] >> y;
+			uint8_t epawns = board[pawns] >> y & (m << 1 | m >> 1);
 			epawns &= (uint8_t)(((previous->board[pawns] & ~ board[pawns]) << 16) >> y);
 			mask |= (((uint64_t)epawns) << y) >> 8;
 		}
@@ -641,9 +641,11 @@ double Board::evaluate(color_t color, bool debug) {
 	uint64_t d_pieces = 0;
 	uint64_t pieces = 0;
 	uint64_t p;
+	uint64_t op_atk = 0;
 
 	if (color == white) {
 		get_white(pieces);
+		attacked_squares(black, op_atk);
 		d_board->get_white(d_pieces);
 		p = board[pawns];
 		center_pawns &= p;
@@ -655,6 +657,7 @@ double Board::evaluate(color_t color, bool debug) {
 	}
 	else {
 		get_black(pieces);
+		attacked_squares(white, op_atk);
 		d_board->get_black(d_pieces);
 		p = board[black + pawns];
 		center_pawns &= p;
@@ -681,7 +684,14 @@ double Board::evaluate(color_t color, bool debug) {
 	int leading;
 	while (p) {
 		leading = ilog2(p);
-		development += 1.75 / abs(target - (leading >> 3) + 0.1);
+		//check for passed pawns and give points based on travel distance
+		//use an array to hash the lanes
+		int x = leading % 8;
+		uint64_t column = 72340172838076673 << x;
+		int distance = abs(target - (leading >> 3));
+		if (!(column & op_atk)) {
+			development += 8.0 / distance;
+		}
 		p -= 1ULL << leading;
 	}
 
