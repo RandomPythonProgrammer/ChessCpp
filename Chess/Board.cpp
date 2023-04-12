@@ -763,20 +763,20 @@ pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t&
 	eval.second = is_color ? numeric_limits<double>::min() : numeric_limits<double>::max();
 
 	if (board->stalemate()) {
-		return pair(board, numeric_limits<double>::min() + 1);
+		return pair(nullptr, numeric_limits<double>::min() + 1);
 	}
 
 	if (board->checkmate(opog_color)) {
-		return pair(board, numeric_limits<double>::max());
+		return pair(nullptr, numeric_limits<double>::max());
 	}
 	if (board->checkmate(og_color)) {
-		return pair(board, numeric_limits<double>::min());
+		return pair(nullptr, numeric_limits<double>::min());
 	}
 
 	vector<Board*> moves = board->get_moves(curr_color);
 
 	if (depth >= EVAL_DEPTH) {
-		eval = pair(board, board->evaluate(og_color) / board->evaluate(opog_color));
+		eval = pair(nullptr, board->evaluate(og_color) / board->evaluate(opog_color));
 		goto e;
 	}
 
@@ -800,6 +800,7 @@ pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t&
 
 		}
 		pair<Board*, double> result = reval(move, og_color, op_color, depth + 1, alpha, beta, show);
+		delete result.first;
 
 		if (is_color) {
 			if (result.second > eval.second) {
