@@ -443,7 +443,7 @@ void Board::get_attackers(const uint8_t& position, uint64_t& mask) {
 		if (moves & pos) {
 			mask |= 1ULL << leading;
 		}
-		o -= ipow2[leading];
+		o -= 1ULL << leading;
 	}
 }
 
@@ -541,7 +541,7 @@ bool Board::stalemate() {
 		}
 		curr = curr->previous;
 	} while (curr->previous);
-	return stalemate(white) || stalemate(black);
+	return false;
 }
 
 void Board::move(const uint64_t& start, const uint64_t& dest) {
@@ -706,7 +706,7 @@ double Board::evaluate(color_t color, bool debug) {
 		uint16_t d = 0;
 		uint64_t developed = (d_board->board[i] ^ sub) & ~d_board->board[i];
 		d += popcount(developed & 35604928818740736) * 0.25;
-		d += popcount(developed & 66229406269440) * 0.50;
+		d += popcount(developed & 66229406269440) * 0.75;
 		development += d / abs(4 * (val - 3.5));
 		value += val * popcount(sub);
 	}
@@ -720,16 +720,18 @@ double Board::evaluate(color_t color, bool debug) {
 		int x = leading % 8;
 		uint64_t column = 72340172838076673 << x;
 		int distance = abs(target - (leading >> 3));
+		double val = 3.2 / distance;
 		if (!(column & op_atk)) {
-			development += 8.0 / distance;
+			val *= 2.5;
 		}
+		development += val;
 		p -= 1ULL << leading;
 	}
 
 	if (debug)
 		printf("Value: %d, Development: %f, Center Pawns: %f, Vision: %f, Castled: %d\n", value, development, popcount(center_pawns) * 0.5, popcount(vision) * 0.05, (cc ? 0 : (castled ? 1 : -2)));
 
-	return value + development + popcount(center_pawns) * 0.75 + popcount(vision) * 0.1 + (cc ? 0 : (castled ? 0.5 : -0.5));
+	return value + development + popcount(center_pawns) * 1 + popcount(vision) * 0.025 + (cc ? 0 : (castled ? 0.5 : -0.5));
 }
 
 pair<Board*, double> Board::get_best(const color_t& color, const bool& show) {
@@ -770,20 +772,19 @@ pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t&
 	bool is_color = og_color == curr_color;
 
 	pair<Board*, double> eval;
-	eval.second = is_color ? numeric_limits<double>::min() : numeric_limits<double>::max();
+	eval.second = is_color ? numeric_limits<double>::min()*2 : numeric_limits<double>::max()/2;
+	vector<Board*> moves = board->get_moves(curr_color);
 
-	if (board->stalemate()) {
-		return pair(nullptr, numeric_limits<double>::min() + 1);
+	if (board->stalemate() || (!board->check(curr_color) && !moves.size())) {
+		return pair(nullptr, 1);
 	}
 
-	if (board->checkmate(opog_color)) {
+	if (!is_color && !moves.size()) {
 		return pair(nullptr, numeric_limits<double>::max());
 	}
-	if (board->checkmate(og_color)) {
+	if (is_color && !moves.size()) {
 		return pair(nullptr, numeric_limits<double>::min());
 	}
-
-	vector<Board*> moves = board->get_moves(curr_color);
 
 	if (depth >= EVAL_DEPTH) {
 		eval = pair(nullptr, board->evaluate(og_color) / board->evaluate(opog_color));
