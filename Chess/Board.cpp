@@ -59,7 +59,7 @@ Board::Board(Board* previous) {
 }
 
 Board::~Board() {
-	delete board;
+	delete[] board;
 }
 
 void Board::get_white(uint64_t& mask) {
@@ -484,33 +484,43 @@ bool Board::check(const color_t& color) {
 }
 
 bool Board::checkmate(const color_t& color) {
+	vector<Board*> moves;
+	bool r = false;
 	if (check(color)) {
-		vector<Board*> moves = get_moves(color);
+		moves = get_moves(color);
 		for (Board* move : moves) {
 			bool check = move->check(color);
-			delete move;
 			if (!check) {
-				return false;
+				goto e;
 			}
 		}
-		return true;
+		r = true;
 	}
-	return false;
+e:;
+	for (Board* move : moves) {
+		delete move;
+	}
+	return r;
 }
 
 bool Board::stalemate(const color_t& color) {
+	vector<Board*> moves;
+	bool r = false;
 	if (!check(color)) {
-		vector<Board*> moves = get_moves(color);
+		moves = get_moves(color);
 		for (Board* move : moves) {
 			bool check = move->check(color);
-			delete move;
 			if (!check) {
-				return false;
+				goto e;
 			}
 		}
-		return true;
+		r = true;
 	}
-	return false;
+e:;
+	for (Board* move : moves) {
+		delete move;
+	}
+	return r;
 }
 
 bool Board::stalemate() {
