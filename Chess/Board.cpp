@@ -1,5 +1,4 @@
 #include "board.h"
-#include "util.h"
 #include <iostream>
 #include "test.h"
 #include <ppl.h>
@@ -437,7 +436,7 @@ void Board::get_attackers(const uint8_t& position, uint64_t& mask) {
 
 	int leading;
 	while (o) {
-		leading = ilog2(o);
+		leading = countr_zero(o);
 		uint64_t moves = 0;
 		get_attacks(leading, moves);
 		if (moves & pos) {
@@ -468,7 +467,7 @@ void Board::attacked_squares(const color_t& color, uint64_t& mask) {
 	color == white ? get_white(a) : get_black(a);
 	int leading;
 	while (a) {
-		leading = ilog2(a);
+		leading = countr_zero(a);
 		uint64_t moves = 0;
 		get_attacks(leading, moves);
 		mask |= moves;
@@ -477,17 +476,17 @@ void Board::attacked_squares(const color_t& color, uint64_t& mask) {
 }
 
 bool Board::check(const color_t& color) {
-	uint8_t king_pos = color == white ? ilog2(board[kings]) : ilog2(board[black + kings]);
+	uint8_t king_pos = color == white ? countr_zero(board[kings]) : countr_zero(board[black + kings]);
 	uint64_t pieces = 0;
 	color == white ? get_black(pieces) : get_white(pieces);
 	int p_leading;
 	while (pieces) {
-		p_leading = ilog2(pieces);
+		p_leading = countr_zero(pieces);
 		uint64_t attacks = 0;
 		get_attacks(p_leading, attacks);
 		int a_leading;
 		while (attacks) {
-			a_leading = ilog2(attacks);
+			a_leading = countr_zero(attacks);
 			if (a_leading == king_pos) {
 				return true;
 			}
@@ -650,12 +649,12 @@ vector<Board*> Board::get_moves(const color_t& color) {
 	color == white ? get_white(pieces): get_black(pieces);
 	int p_leading;
 	while (pieces) {
-		p_leading = ilog2(pieces);
+		p_leading = countr_zero(pieces);
 		uint64_t moves = 0;
 		get_moves(p_leading, moves);
 		int m_leading;
 		while (moves) {
-			m_leading = ilog2(moves);
+			m_leading = countr_zero(moves);
 			Board* next = new Board(this);
 			next->move(1ULL << p_leading, 1ULL << m_leading);
 			if (!next->check(color)) {
@@ -729,7 +728,7 @@ double Board::evaluate(color_t color, bool debug) {
 
 	int leading;
 	while (p) {
-		leading = ilog2(p);
+		leading = countr_zero(p);
 		//check for passed pawns and give points based on travel distance
 		//use an array to hash the lanes
 		int x = leading % 8;

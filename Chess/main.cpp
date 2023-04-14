@@ -9,6 +9,14 @@ using namespace std;
 using namespace sf;
 
 int main() {
+	//Testing code for profiling
+	//Start Test
+	//Board* b = new Board();
+	//b = b->get_best(white).first;
+	//cout << "Finished Test" << endl;
+	//return 0;
+	//End Test
+
 	char c;
 	cin >> c;
 	color_t color = c == 'w'? white: black;
