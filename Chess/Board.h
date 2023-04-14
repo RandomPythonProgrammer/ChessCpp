@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <utility>
 #include <vector>
+#include <array>
 
 using namespace std;
 
@@ -299,12 +300,11 @@ public:
 	bool blrmove;
 	bool wlrmove;
 
-	uint64_t* board;
+	array<uint64_t, 12> board;
 	Board* previous;
 
 	Board();
 	Board(Board* previous);
-	~Board();
 
 	void get_white(uint64_t& mask);
 	void get_black(uint64_t& mask);

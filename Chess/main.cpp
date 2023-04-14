@@ -2,6 +2,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <string>
+#include <thread>
 #include "board.h"
 #include "util.h"
 
@@ -16,10 +17,13 @@ int main() {
 	//cout << "Finished Test" << endl;
 	//return 0;
 	//End Test
-
+	
 	char c;
 	cin >> c;
 	color_t color = c == 'w'? white: black;
+	bool can_move = color == white;
+	thread* move_thread;
+
 	int piece_size = 45;
 	int board_size = piece_size * 8;
 	RenderWindow window(VideoMode(board_size, board_size), "chess");
@@ -31,7 +35,26 @@ int main() {
 
 	//bot goes first
 	if (color == black) {
-		board = board->get_best(color == white ? black : white).first;
+		thread move_thread(
+			[&]() {
+				board = board->get_best(color == white ? black : white, Keyboard::isKeyPressed(Keyboard::LShift)).first;
+				can_move = true;
+				printf("has castled: %d, King moved: %d, rr moved: %d, lr moved: %d\n", board->wcasle, board->wkmove, board->wrrmove, board->wlrmove);
+				double w = board->evaluate(white, true);
+				cout << "-------------------" << endl;
+				double b = board->evaluate(black, true);
+				printf("White value: %f, Black value: %f\n", w, b);
+				if (board->checkmate(white)) {
+					cout << "white checkmate" << endl;
+				}
+				if (board->checkmate(black)) {
+					cout << "black checkmate" << endl;
+				} if (board->stalemate()) {
+					cout << "stalemate" << endl;
+				}
+				cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
+			}
+		);
 		double w = board->evaluate(white, true);
 		cout << "%%%%%%%%%%%%%%%%%%" << endl;
 		double b = board->evaluate(black, true);
@@ -81,7 +104,7 @@ int main() {
 				uint64_t mask = 0ULL;
 				color == white ? board->get_white(mask) : board->get_black(mask);
 
-				if (has_selection) {
+				if (has_selection && can_move) {
 					uint64_t moves = 0;
 					board->get_moves(selected, moves);
 					if (moves & click_pos) {
@@ -89,24 +112,30 @@ int main() {
 						next->move(selection, click_pos); //selection
 						if (!next->check(color)) {
 							board = next;
+							can_move = false;
 							selected = pos;
 							has_selection = false;
 							//color = color == white ? black : white;
-							board = board->get_best(color == white? black: white, Keyboard::isKeyPressed(Keyboard::LShift)).first;
-							printf("has castled: %d, King moved: %d, rr moved: %d, lr moved: %d\n", board->wcasle, board->wkmove, board->wrrmove, board->wlrmove);
-							double w = board->evaluate(white, true);
-							cout << "-------------------" << endl;
-							double b = board->evaluate(black, true);
-							printf("White value: %f, Black value: %f\n", w, b);
-							if (board->checkmate(white)) {
-								cout << "white checkmate" << endl;
-							}
-							if (board->checkmate(black)) {
-								cout << "black checkmate" << endl;
-							} if (board->stalemate()) {
-								cout << "stalemate" << endl;
-							}
-							cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
+							move_thread = new thread(
+								[&]() {
+									board = board->get_best(color == white ? black : white, Keyboard::isKeyPressed(Keyboard::LShift)).first;
+									can_move = true;
+									printf("has castled: %d, King moved: %d, rr moved: %d, lr moved: %d\n", board->wcasle, board->wkmove, board->wrrmove, board->wlrmove);
+									double w = board->evaluate(white, true);
+									cout << "-------------------" << endl;
+									double b = board->evaluate(black, true);
+									printf("White value: %f, Black value: %f\n", w, b);
+									if (board->checkmate(white)) {
+										cout << "white checkmate" << endl;
+									}
+									if (board->checkmate(black)) {
+										cout << "black checkmate" << endl;
+									} if (board->stalemate()) {
+										cout << "stalemate" << endl;
+									}
+									cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
+								}
+							);
 						} else {
 							delete next;
 						}

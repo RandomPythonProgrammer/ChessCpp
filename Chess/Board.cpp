@@ -6,7 +6,7 @@
 
 using namespace std;
 
-const int EVAL_DEPTH = 6;
+const int EVAL_DEPTH = 4;
 
 Board::Board() {
 	previous = nullptr;
@@ -20,7 +20,7 @@ Board::Board() {
 	uint64_t kings = 0b00001000;
 
 
-	board = new uint64_t[]{
+	board = {
 		pawns, bishops, knights, rooks, queens, kings,
 		pawns << 40, bishops << 56, knights << 56, rooks << 56, queens << 56, kings << 56
 	};
@@ -41,8 +41,7 @@ Board::Board() {
 Board::Board(Board* previous) {
 	this->previous = previous;
 
-	this->board = new uint64_t[12];
-	memcpy(board, previous->board, 96);
+	board = previous->board;
 
 	bcasle = previous->bcasle;
 	wcasle = previous->wcasle;
@@ -55,10 +54,6 @@ Board::Board(Board* previous) {
 
 	blrmove = previous->blrmove;
 	wlrmove = previous->wlrmove;
-}
-
-Board::~Board() {
-	delete[] board;
 }
 
 void Board::get_white(uint64_t& mask) {
@@ -825,11 +820,10 @@ pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t&
 
 		}
 		pair<Board*, double> result = reval(move, og_color, op_color, depth + 1, alpha, beta, show);
-		delete result.first;
 
 		if (is_color) {
 			if (result.second > eval.second) {
-				eval.first = move;
+				if (!depth) eval.first = move;
 				eval.second = result.second;
 			}
 			if (eval.second > beta) {
@@ -839,7 +833,7 @@ pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t&
 		}
 		else {
 			if (result.second < eval.second) {
-				eval.first = move;
+				if (!depth) eval.first = move;
 				eval.second = result.second;
 			}
 			if (eval.second < alpha) {
