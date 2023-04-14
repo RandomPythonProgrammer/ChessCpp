@@ -7,7 +7,7 @@
 
 using namespace std;
 
-const int EVAL_DEPTH = 4;
+const int EVAL_DEPTH = 6;
 
 Board::Board() {
 	previous = nullptr;
@@ -787,7 +787,7 @@ pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t&
 	bool is_color = og_color == curr_color;
 
 	pair<Board*, double> eval;
-	eval.second = is_color ? numeric_limits<double>::min()*2 : numeric_limits<double>::max()/2;
+	eval.second = is_color ? numeric_limits<double>::min() : numeric_limits<double>::max();
 	vector<Board*> moves = board->get_moves(curr_color);
 
 	if (board->stalemate() || (!board->check(curr_color) && !moves.size())) {
