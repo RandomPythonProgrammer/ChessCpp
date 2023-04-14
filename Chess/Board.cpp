@@ -479,19 +479,19 @@ void Board::attacked_squares(const color_t& color, uint64_t& mask) {
 bool Board::check(const color_t& color) {
 	uint8_t king_pos = color == white ? ilog2(board[kings]) : ilog2(board[black + kings]);
 	uint64_t pieces = 0;
-	color == white ? get_white(pieces) : get_black(pieces);
+	color == white ? get_black(pieces) : get_white(pieces);
 	int p_leading;
 	while (pieces) {
 		p_leading = ilog2(pieces);
-		uint64_t moves = 0;
-		get_moves(p_leading, moves);
-		int m_leading;
-		while (moves) {
-			m_leading = ilog2(moves);
-			if (m_leading == king_pos) {
+		uint64_t attacks = 0;
+		get_attacks(p_leading, attacks);
+		int a_leading;
+		while (attacks) {
+			a_leading = ilog2(attacks);
+			if (a_leading == king_pos) {
 				return true;
 			}
-			moves -= 1ULL << m_leading;
+			attacks -= 1ULL << a_leading;
 		}
 		pieces -= 1ULL << p_leading;
 	}
