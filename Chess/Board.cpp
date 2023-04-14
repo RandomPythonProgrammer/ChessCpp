@@ -477,10 +477,25 @@ void Board::attacked_squares(const color_t& color, uint64_t& mask) {
 }
 
 bool Board::check(const color_t& color) {
-	uint8_t king_pos = ilog2(board[kings + (color == white ? 0 : black)]);
-	uint64_t attackers = 0;
-	get_attackers(king_pos, attackers);
-	return attackers;
+	uint8_t king_pos = color == white ? ilog2(board[kings]) : ilog2(board[black + kings]);
+	uint64_t pieces = 0;
+	color == white ? get_white(pieces) : get_black(pieces);
+	int p_leading;
+	while (pieces) {
+		p_leading = ilog2(pieces);
+		uint64_t moves = 0;
+		get_moves(p_leading, moves);
+		int m_leading;
+		while (moves) {
+			m_leading = ilog2(moves);
+			if (m_leading == king_pos) {
+				return true;
+			}
+			moves -= 1ULL << m_leading;
+		}
+		pieces -= 1ULL << p_leading;
+	}
+	return false;
 }
 
 bool Board::checkmate(const color_t& color) {
