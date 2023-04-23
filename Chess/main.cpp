@@ -35,7 +35,7 @@ int main() {
 
 	//bot goes first
 	if (color == black) {
-		thread move_thread(
+		move_thread = new thread(
 			[&]() {
 				board = board->get_best(color == white ? black : white, Keyboard::isKeyPressed(Keyboard::LShift)).first;
 				can_move = true;
@@ -55,10 +55,7 @@ int main() {
 				cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
 			}
 		);
-		double w = board->evaluate(white, true);
-		cout << "%%%%%%%%%%%%%%%%%%" << endl;
-		double b = board->evaluate(black, true);
-		printf("White value: %f, Black value: %f\n", w, b);
+		move_thread->join();
 	}
 
 	RectangleShape square(Vector2f(piece_size, piece_size));
@@ -98,6 +95,9 @@ int main() {
 				Vector2i position = Mouse::getPosition(window);
 				int x = (board_size - position.x) / piece_size;
 				int y = (board_size - position.y) / piece_size;
+				if (color == black) {
+					y = 7 - y;
+				}
 				int pos = x + y * 8;
 				uint64_t click_pos = 1ULL << pos;
 				uint64_t selection = 1ULL << selected;
@@ -156,7 +156,7 @@ int main() {
 			int row = i / 8;
 			int column = i % 8;
 			if (row % 2 == column % 2) {
-				square.setPosition(column * piece_size, board_size - (row+1) * piece_size);
+				square.setPosition(column * piece_size, color == black ? row * piece_size : board_size - (row + 1) * piece_size);
 				window.draw(square);
 			}
 		}
@@ -169,7 +169,7 @@ int main() {
 				int row = j / 8;
 				int column = j % 8;
 				if (sub & 1ULL << j) {
-					sprite.setPosition((7-column) * piece_size, board_size - (row+1) * piece_size);
+					sprite.setPosition((7-column) * piece_size, color == black? row * piece_size: board_size - (row+1) * piece_size);
 					window.draw(sprite);
 				}
 			}
@@ -178,7 +178,7 @@ int main() {
 		if (has_selection) {
 			int row = selected / 8;
 			int column = selected % 8;
-			selection_circle.setPosition((7-column) * 45, board_size - (row+1) * 45);
+			selection_circle.setPosition((7-column) * 45, color == black ? row * piece_size : board_size - (row + 1) * piece_size);
 			window.draw(selection_circle);
 		}
 
