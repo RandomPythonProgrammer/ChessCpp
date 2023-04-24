@@ -5,11 +5,13 @@
 #include <thread>
 #include "board.h"
 #include "util.h"
+#include "test.h"
 
 using namespace std;
 using namespace sf;
 
-int main() {
+
+int play() {
 	//Testing code for profiling
 	//Start Test
 	//Board* b = new Board();
@@ -187,3 +189,46 @@ int main() {
 	return 0;
 }
 
+
+int engine() {
+	char color;
+	cin >> color;
+	color_t engine_color = color == 'w' ? white : black;
+
+	Board* board = new Board();
+
+	while (true) {
+		//Makes the opponent's move
+		board = new Board(board);
+		for (int i = 0; i < 12; i++) {
+			uint64_t value;
+			cin >> value;
+			board->board[i] = value;
+		}
+
+
+		//Moves and transmits back
+		board = board->get_best(engine_color).first;
+		uint64_t prev = 0;
+		engine_color == white ? board->previous->get_white(prev): board->previous->get_black(prev);
+		uint64_t curr = 0;
+		engine_color == white ? board->get_white(curr) : board->get_black(curr);
+
+		uint64_t diff = prev ^ curr;
+		int start = countr_zero(prev & diff);
+		int end = countr_zero(curr & diff);
+
+		cout << to_string(start) << endl;
+		cout << to_string(end) << endl;
+	}
+}
+
+
+int main(int argc, char* args[]) {
+	if (argc) {
+		return engine();
+	}
+	else {
+		return play();
+	}
+}
