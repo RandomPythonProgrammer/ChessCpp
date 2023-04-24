@@ -225,10 +225,6 @@ int engine() {
 
 
 int main(int argc, char* args[]) {
-	if (argc) {
-		return engine();
-	}
-	else {
-		return play();
-	}
+	//return engine();
+	return play();
 }

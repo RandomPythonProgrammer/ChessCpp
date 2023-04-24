@@ -471,7 +471,7 @@ void Board::attacked_squares(const color_t& color, uint64_t& mask) {
 }
 
 bool Board::check(const color_t& color) {
-	uint8_t king_pos = color == white ? countr_zero(board[kings]) : countr_zero(board[black + kings]);
+	uint64_t king_pos = color == white ? board[kings] : board[black + kings];
 	uint64_t pieces = 0;
 	color == white ? get_black(pieces) : get_white(pieces);
 	int p_leading;
@@ -479,13 +479,8 @@ bool Board::check(const color_t& color) {
 		p_leading = countr_zero(pieces);
 		uint64_t attacks = 0;
 		get_attacks(p_leading, attacks);
-		int a_leading;
-		while (attacks) {
-			a_leading = countr_zero(attacks);
-			if (a_leading == king_pos) {
-				return true;
-			}
-			attacks -= 1ULL << a_leading;
+		if (attacks & king_pos) {
+			return true;
 		}
 		pieces -= 1ULL << p_leading;
 	}
@@ -500,6 +495,7 @@ bool Board::checkmate(const color_t& color) {
 		for (Board* move : moves) {
 			bool check = move->check(color);
 			if (!check) {
+				r = false;
 				goto e;
 			}
 		}
@@ -520,6 +516,7 @@ bool Board::stalemate(const color_t& color) {
 		for (Board* move : moves) {
 			bool check = move->check(color);
 			if (!check) {
+				r = false;
 				goto e;
 			}
 		}
@@ -715,7 +712,7 @@ double Board::evaluate(color_t color, bool debug) {
 		uint16_t d = 0;
 		uint64_t developed = (d_board->board[i] ^ sub) & ~d_board->board[i];
 		d += popcount(developed & 35604928818740736) * 0.25;
-		d += popcount(developed & 66229406269440) * 0.75;
+		d += popcount(developed & 66229406269440) * 0.5;
 		development += d / abs(4 * (val - 3.5));
 		value += val * popcount(sub);
 	}
@@ -729,18 +726,18 @@ double Board::evaluate(color_t color, bool debug) {
 		int x = leading % 8;
 		uint64_t column = 72340172838076673 << x;
 		int distance = abs(target - (leading >> 3));
-		double val = 3.2 / distance;
+
 		if (!(column & op_atk)) {
-			val *= 2.5;
+			development += 8.0 / distance;
 		}
-		development += val;
+
 		p -= 1ULL << leading;
 	}
 
 	if (debug)
 		printf("Value: %d, Development: %f, Center Pawns: %f, Vision: %f, Castled: %d\n", value, development, popcount(center_pawns) * 0.5, popcount(vision) * 0.05, (cc ? 0 : (castled ? 1 : -2)));
 
-	return value + development + popcount(center_pawns) * 1 + popcount(vision) * 0.025 + (cc ? 0 : (castled ? 0.5 : -0.5));
+	return value + development + popcount(center_pawns) * 0.75 + popcount(vision) * 0.1 + (cc ? 0 : (castled ? 0.5 : -0.5));
 }
 
 pair<Board*, double> Board::get_best(const color_t& color, const bool& show) {
@@ -784,14 +781,16 @@ pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t&
 	eval.second = is_color ? numeric_limits<double>::min() : numeric_limits<double>::max();
 	vector<Board*> moves = board->get_moves(curr_color);
 
-	if (board->stalemate() || (!board->check(curr_color) && !moves.size())) {
+	bool check = board->check(curr_color);
+
+	if (board->stalemate() || (!check && !moves.size())) {
 		return pair(nullptr, 1);
 	}
 
-	if (!is_color && !moves.size()) {
+	if (!is_color && !moves.size() && check) {
 		return pair(nullptr, numeric_limits<double>::max());
 	}
-	if (is_color && !moves.size()) {
+	if (is_color && !moves.size() && check) {
 		return pair(nullptr, numeric_limits<double>::min());
 	}
 
