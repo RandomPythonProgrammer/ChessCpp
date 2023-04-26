@@ -330,8 +330,8 @@ public:
 	vector<Board*> get_moves(const color_t& color);
 
 	void move(const uint64_t& start, const uint64_t& end);
-	double evaluate(color_t color, bool debug = false);
-	pair<Board*, double> get_best(const color_t& color, const bool& show = false);
+	double evaluate(color_t color);
+	pair<Board*, double> get_best(const color_t& color, const bool& show=false);
 };
 
-pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t& curr_color, const int& depth, double alpha, double beta, const bool& show = false);
+double reval(Board* board, const color_t& og_color, const color_t& curr_color, const int& depth, double alpha, double beta);

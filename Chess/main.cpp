@@ -39,12 +39,12 @@ int play() {
 	if (color == black) {
 		move_thread = new thread(
 			[&]() {
-				board = board->get_best(color == white ? black : white, Keyboard::isKeyPressed(Keyboard::LShift)).first;
+				board = board->get_best(color == white ? black : white).first;
 				can_move = true;
 				printf("has castled: %d, King moved: %d, rr moved: %d, lr moved: %d\n", board->wcasle, board->wkmove, board->wrrmove, board->wlrmove);
-				double w = board->evaluate(white, true);
+				double w = board->evaluate(white);
 				cout << "-------------------" << endl;
-				double b = board->evaluate(black, true);
+				double b = board->evaluate(black);
 				printf("White value: %f, Black value: %f\n", w, b);
 				if (board->checkmate(white)) {
 					cout << "white checkmate" << endl;
@@ -61,7 +61,7 @@ int play() {
 	}
 
 	RectangleShape square(Vector2f(piece_size, piece_size));
-	square.setFillColor(Color::Green);
+	square.setFillColor(Color(50, 150, 0, 255));
 	CircleShape selection_circle;
 	selection_circle.setRadius(piece_size / 2);
 	selection_circle.setFillColor(Color::Transparent);
@@ -90,6 +90,29 @@ int play() {
 				if (event.key.code == Keyboard::R) {
 					delete board;
 					board = new Board();
+					if (color == black) {
+						move_thread = new thread(
+							[&]() {
+								board = board->get_best(color == white ? black : white).first;
+								can_move = true;
+								printf("has castled: %d, King moved: %d, rr moved: %d, lr moved: %d\n", board->wcasle, board->wkmove, board->wrrmove, board->wlrmove);
+								double w = board->evaluate(white);
+								cout << "-------------------" << endl;
+								double b = board->evaluate(black);
+								printf("White value: %f, Black value: %f\n", w, b);
+								if (board->checkmate(white)) {
+									cout << "white checkmate" << endl;
+								}
+								if (board->checkmate(black)) {
+									cout << "black checkmate" << endl;
+								} if (board->stalemate()) {
+									cout << "stalemate" << endl;
+								}
+								cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%" << endl;
+							}
+						);
+						move_thread->join();
+					}
 				}
 			}
 
@@ -123,9 +146,9 @@ int play() {
 									board = board->get_best(color == white ? black : white, Keyboard::isKeyPressed(Keyboard::LShift)).first;
 									can_move = true;
 									printf("has castled: %d, King moved: %d, rr moved: %d, lr moved: %d\n", board->wcasle, board->wkmove, board->wrrmove, board->wlrmove);
-									double w = board->evaluate(white, true);
+									double w = board->evaluate(white);
 									cout << "-------------------" << endl;
-									double b = board->evaluate(black, true);
+									double b = board->evaluate(black);
 									printf("White value: %f, Black value: %f\n", w, b);
 									if (board->checkmate(white)) {
 										cout << "white checkmate" << endl;

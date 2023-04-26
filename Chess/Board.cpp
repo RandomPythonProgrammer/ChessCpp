@@ -3,10 +3,12 @@
 #include "test.h"
 #include <ppl.h>
 #include <concurrent_unordered_map.h>
+#include <map>
 
 using namespace std;
 
 const int EVAL_DEPTH = 4;
+const bool debug = true;
 
 Board::Board() {
 	previous = nullptr;
@@ -471,20 +473,10 @@ void Board::attacked_squares(const color_t& color, uint64_t& mask) {
 }
 
 bool Board::check(const color_t& color) {
-	uint64_t king_pos = color == white ? board[kings] : board[black + kings];
-	uint64_t pieces = 0;
-	color == white ? get_black(pieces) : get_white(pieces);
-	int p_leading;
-	while (pieces) {
-		p_leading = countr_zero(pieces);
-		uint64_t attacks = 0;
-		get_attacks(p_leading, attacks);
-		if (attacks & king_pos) {
-			return true;
-		}
-		pieces -= 1ULL << p_leading;
-	}
-	return false;
+	uint64_t king_pos = color == white ? countr_zero(board[kings]) : countr_zero(board[black + kings]);
+	uint64_t attackers = 0;
+	get_attackers(king_pos, attackers);
+	return attackers;
 }
 
 bool Board::checkmate(const color_t& color) {
@@ -638,7 +630,7 @@ vector<Board*> Board::get_moves(const color_t& color) {
 	//gets all moves and return them as an array;
 	std::vector<Board*> move_vec;
 	uint64_t pieces = 0;
-	color == white ? get_white(pieces): get_black(pieces);
+	color == white ? get_white(pieces) : get_black(pieces);
 	int p_leading;
 	while (pieces) {
 		p_leading = countr_zero(pieces);
@@ -662,7 +654,7 @@ vector<Board*> Board::get_moves(const color_t& color) {
 	return move_vec;
 }
 
-double Board::evaluate(color_t color, bool debug) {
+double Board::evaluate(color_t color) {
 	int min;
 	int max;
 	int value = 0;
@@ -679,6 +671,8 @@ double Board::evaluate(color_t color, bool debug) {
 	uint64_t pieces = 0;
 	uint64_t p;
 	uint64_t op_atk = 0;
+	uint64_t a = 0;
+	get_all(a);
 
 	if (color == white) {
 		get_white(pieces);
@@ -711,8 +705,9 @@ double Board::evaluate(color_t color, bool debug) {
 		uint8_t val = value_table[i];
 		uint16_t d = 0;
 		uint64_t developed = (d_board->board[i] ^ sub) & ~d_board->board[i];
-		d += popcount(developed & 35604928818740736) * 0.25;
-		d += popcount(developed & 66229406269440) * 0.5;
+		d += popcount(developed & 35604928818740736) * 0.1;
+		d += popcount(developed & 66229406269440) * 0.75;
+		development -= popcount(op_atk & sub) * pow(val, 0.25);
 		development += d / abs(4 * (val - 3.5));
 		value += val * popcount(sub);
 	}
@@ -727,17 +722,17 @@ double Board::evaluate(color_t color, bool debug) {
 		uint64_t column = 72340172838076673 << x;
 		int distance = abs(target - (leading >> 3));
 
-		if (!(column & op_atk)) {
+		if (!(column & (op_atk | (a & ~(1ULL << leading))))) {
 			development += 8.0 / distance;
+		}
+		else {
+			development += 3 / distance;
 		}
 
 		p -= 1ULL << leading;
 	}
 
-	if (debug)
-		printf("Value: %d, Development: %f, Center Pawns: %f, Vision: %f, Castled: %d\n", value, development, popcount(center_pawns) * 0.5, popcount(vision) * 0.05, (cc ? 0 : (castled ? 1 : -2)));
-
-	return value + development + popcount(center_pawns) * 0.75 + popcount(vision) * 0.1 + (cc ? 0 : (castled ? 0.5 : -0.5));
+	return value + development + popcount(center_pawns) * 0.5 + popcount(vision) * 0.05 + (cc ? 0 : (castled ? 1 : -1));
 }
 
 pair<Board*, double> Board::get_best(const color_t& color, const bool& show) {
@@ -749,18 +744,21 @@ pair<Board*, double> Board::get_best(const color_t& color, const bool& show) {
 	eval.second = numeric_limits<double>::min();
 
 	vector<Board*> moves = get_moves(color);
-	concurrency::concurrent_unordered_map<Board*, pair<Board*, double>> results;
+	concurrency::concurrent_unordered_map<Board*, double> results;
 
 	concurrency::parallel_for_each(moves.begin(), moves.end(), [&](Board* move) {
-		results[move] = reval(move, color, ocolor, 1, alpha, beta, show);
+		results[move] = reval(move, color, ocolor, 1, alpha, beta);
 	});
 
 
-	for (const pair<Board*, pair<Board*, double>> &item : results) {
-		pair<Board*, double> result = item.second;
-		if (result.second > eval.second) {
+	for (const pair<Board*, double> &item : results) {
+		if (debug && show) {
+			cout << "result: " << item.second;
+			render_board(item.first, item.second);
+		}
+		if (item.second > eval.second) {
 			eval.first = item.first;
-			eval.second = result.second;
+			eval.second = item.second;
 		}
 	}
 		
@@ -772,81 +770,58 @@ pair<Board*, double> Board::get_best(const color_t& color, const bool& show) {
 	return eval;
 }
 
-pair<Board*, double> reval(Board* board, const color_t& og_color, const color_t& curr_color, const int& depth, double alpha, double beta, const bool& show) {
+double reval(Board* board, const color_t& og_color, const color_t& curr_color, const int& depth, double alpha, double beta) {
 	color_t opog_color = og_color == white ? black : white;
 	color_t op_color = curr_color == white ? black : white;
 	bool is_color = og_color == curr_color;
 
-	pair<Board*, double> eval;
-	eval.second = is_color ? numeric_limits<double>::min() : numeric_limits<double>::max();
+	double eval = is_color ? numeric_limits<double>::min() : numeric_limits<double>::max();
 	vector<Board*> moves = board->get_moves(curr_color);
 
 	bool check = board->check(curr_color);
 
 	if (board->stalemate() || (!check && !moves.size())) {
-		return pair(nullptr, 1);
+		return 1;
 	}
 
 	if (!is_color && !moves.size() && check) {
-		return pair(nullptr, numeric_limits<double>::max());
+		return numeric_limits<double>::max();
 	}
 	if (is_color && !moves.size() && check) {
-		return pair(nullptr, numeric_limits<double>::min());
+		return numeric_limits<double>::min();
 	}
 
 	if (depth >= EVAL_DEPTH) {
-		eval = pair(nullptr, board->evaluate(og_color) / board->evaluate(opog_color));
+		eval = board->evaluate(og_color) / board->evaluate(opog_color);
 		goto e;
 	}
 
 	for (Board* move : moves) {
-		//visualize the board and the value associated with it
-		if (show) {
-
-			//Show color move
-			if (curr_color == white) {
-				cout << "white turn to move" << endl;
-			}
-			else {
-				cout << "black turn to move" << endl;
-			}
-			cout << "Depth: " << depth << endl;
-			cout << "Moves: " << moves.size() << endl;
-			cout << "EEEEEEEEEEEEEEEEEEEEE" << endl;
-
-			render_board(move, move->evaluate(og_color) / move->evaluate(opog_color));
-			system("cls");
-
-		}
-		pair<Board*, double> result = reval(move, og_color, op_color, depth + 1, alpha, beta, show);
+		double result = reval(move, og_color, op_color, depth + 1, alpha, beta);
 
 		if (is_color) {
-			if (result.second > eval.second) {
-				if (!depth) eval.first = move;
-				eval.second = result.second;
+			if (result > eval) {
+				eval = result;
 			}
-			if (eval.second > beta) {
+			if (eval > beta) {
 				goto e;
 			}
-			alpha = max(eval.second, alpha);
+			alpha = max(eval, alpha);
 		}
 		else {
-			if (result.second < eval.second) {
-				if (!depth) eval.first = move;
-				eval.second = result.second;
+			if (result < eval) {
+				eval = result;
 			}
-			if (eval.second < alpha) {
+			if (eval < alpha) {
 				goto e;
 			}
-			beta = min(eval.second, beta);
+			beta = min(eval, beta);
 		}
 	}
 
 e:;
 	for (Board* move : moves) {
-		if (move != eval.first) {
-			delete move;
-		}
+		delete move;
 	}
 	return eval;
 }
